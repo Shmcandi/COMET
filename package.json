@@ -1,0 +1,16 @@
+{
+  "name": "vibe-a-thon-synapse",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@2ndbrainlabs-ai/synapse-cli": "^0.1.9"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "orders-logistics-service": {
+      "command": "${VENV_PYTHON}",
+      "args": [
+        "./security/authenticated_mcp_runner.py",
+        "./services/orders_logistics_service/synapse_auto_server.py"
+      ],
+      "env": {
+        "ENDPOINT_BASE_URL": "https://127.0.0.1:8101",
+        "REQUESTS_CA_BUNDLE": "./certs/nexusops_ca.pem",
+        "MCP_SERVICE_JWT": "${SUPPLYPULSE_ES256_JWT}",
+        "MCP_HMAC_SECRET": "${SUPPLYPULSE_HMAC_SECRET}"
+      }
+    },
+    "support-ticketing-service": {
+      "command": "${VENV_PYTHON}",
+      "args": [
+        "./security/authenticated_mcp_runner.py",
+        "./services/support_ticketing_service/synapse_auto_server.py"
+      ],
+      "env": {
+        "ENDPOINT_BASE_URL": "https://127.0.0.1:8102",
+        "REQUESTS_CA_BUNDLE": "./certs/nexusops_ca.pem",
+        "MCP_SERVICE_JWT": "${CAREDESK_ES256_JWT}",
+        "MCP_HMAC_SECRET": "${CAREDESK_HMAC_SECRET}"
+      }
+    }
+  }
+}

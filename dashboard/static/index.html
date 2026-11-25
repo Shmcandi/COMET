@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexusOps × Synapse — End-to-End TLS &amp; Zero-Trust MCP Copilot</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #111827;
+      --panel-2: #172033;
+      --border: #26334d;
+      --text: #e6edf7;
+      --muted: #93a4c3;
+      --cyan: #38bdf8;
+      --amber: #f59e0b;
+      --emerald: #10b981;
+      --rose: #f43f5e;
+      --violet: #a78bfa;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(circle at top right, #16223b 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo-pill {
+      background: linear-gradient(135deg, #10b981, #38bdf8);
+      color: #06101f;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      letter-spacing: 0.04em;
+    }
+    .title h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    .title p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.16s ease;
+    }
+    button:hover { border-color: var(--cyan); transform: translateY(-1px); }
+    button:disabled { opacity: 0.55; cursor: wait; transform: none; }
+    .btn-live {
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #fff;
+      border: none;
+      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.28);
+    }
+    .btn-live.active {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.28);
+    }
+    .btn-shield {
+      background: rgba(244, 63, 94, 0.14);
+      border-color: rgba(244, 63, 94, 0.45);
+      color: #fda4af;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #4f46e5);
+      border: none;
+      color: #fff;
+      padding: 11px 20px;
+    }
+    main {
+      max-width: 1460px;
+      margin: 0 auto;
+      padding: 22px 28px 48px;
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 22px;
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 13.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sys-badge {
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .sys-orders { background: rgba(56, 189, 248, 0.14); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.35); }
+    .sys-support { background: rgba(167, 139, 250, 0.14); color: var(--violet); border: 1px solid rgba(167, 139, 250, 0.35); }
+    .sys-tls { background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .sys-alert { background: rgba(244, 63, 94, 0.16); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.4); }
+    .tool-chip {
+      display: inline-block;
+      margin: 3px 4px 3px 0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', Consolas, monospace;
+      font-size: 11.5px;
+      background: #0d1321;
+      border: 1px solid var(--border);
+    }
+    .tool-chip.new-tool {
+      border-color: var(--emerald);
+      color: #6ee7b7;
+      background: rgba(16, 185, 129, 0.12);
+    }
+    .scenario-btn {
+      width: 100%;
+      text-align: left;
+      margin-bottom: 9px;
+      padding: 11px 13px;
+      background: #0d1424;
+      border-radius: 10px;
+      line-height: 1.4;
+    }
+    .scenario-btn small {
+      display: block;
+      color: var(--cyan);
+      font-size: 11px;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .query-box { display: flex; gap: 10px; margin-bottom: 18px; }
+    .query-box input {
+      flex: 1;
+      background: #0b111e;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 15px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .answer-body { line-height: 1.6; font-size: 14px; }
+    .answer-body h3 { margin-top: 4px; color: #f8fafc; }
+    .answer-body h4 { margin: 16px 0 6px; color: var(--cyan); }
+    .answer-body code {
+      background: #0b111e;
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-family: Consolas, monospace;
+      font-size: 12.5px;
+      color: #7dd3fc;
+    }
+    .answer-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+    .answer-body th, .answer-body td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .answer-body th { background: #0d1424; color: var(--muted); }
+    .trace-item {
+      border: 1px solid var(--border);
+      background: #0c1220;
+      border-radius: 10px;
+      padding: 10px 13px;
+      margin-bottom: 9px;
+      font-size: 12.5px;
+    }
+    .trace-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .terminal {
+      background: #050811;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      color: #a7f3d0;
+      white-space: pre-wrap;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .meta-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; }
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #0c1322;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .pill.ok { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.4); }
+    .pill.fast { color: #7dd3fc; border-color: rgba(56, 189, 248, 0.4); }
+    .sec-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+    .sec-stat {
+      background: #0b111f;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .sec-stat strong { display: block; font-size: 16px; margin-top: 2px; }
+    .event-row {
+      background: #0b101d;
+      border-left: 3px solid var(--rose);
+      padding: 7px 10px;
+      margin-top: 7px;
+      border-radius: 6px;
+      font-size: 11.5px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo-pill">🔒 TLS 1.3 · E2E JWT+HMAC</span>
+      <div class="title">
+        <h1>NexusOps Cross-System Copilot</h1>
+        <p>2nd Brain Labs × Geek Room Vibe-a-thon · End-to-End Encrypted &amp; Zero-Trust Authenticated MCP</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btnShield" class="btn-shield" onclick="simulateAttacks()">
+        🛡️ Simulate False-Auth Attacks
+      </button>
+      <button id="btnLiveDiscover" class="btn-live" onclick="triggerLiveDiscover()">
+        ⚡ Live Add Endpoint + synapse build --discover
+      </button>
+      <button id="btnReset" onclick="resetDemo()">↺ Reset Demo Baseline</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="card">
+        <h2>
+          <span>Compartmentalized Security &amp; TLS Shield</span>
+          <span class="sys-badge sys-tls" id="tlsCipherBadge">TLS 1.3 Active</span>
+        </h2>
+        <div style="font-size:11.5px;color:var(--muted);line-height:1.45;" id="tlsSummaryText">
+          Verifying X.509 Root CA &amp; audience-scoped JWT+HMAC channels...
+        </div>
+        <div class="sec-grid">
+          <div class="sec-stat">
+            <span style="color:var(--muted);">Verified E2E Calls</span>
+            <strong style="color:#6ee7b7;" id="authOkCount">0</strong>
+          </div>
+          <div class="sec-stat">
+            <span style="color:var(--muted);">False-Auth Blocked</span>
+            <strong style="color:#fda4af;" id="authBlockedCount">0</strong>
+          </div>
+        </div>
+        <div id="falseAuthEventsBox" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>
+          <span>System 1 · SupplyPulse ERP</span>
+          <span class="sys-badge sys-orders" id="ordersCount">5 MCP Tools</span>
+        </h2>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+          <code>https://127.0.0.1:8101</code> (TLS + Scoped JWT) → <code>synapse_auto_server.py</code>
+        </div>
+        <div id="ordersTools"></div>
+      </div>
+
+      <div class="card">
+        <h2>
+          <span>System 2 · CareDesk CRM</span>
+          <span class="sys-badge sys-support" id="supportCount">7 MCP Tools</span>
+        </h2>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
+          <code>https://127.0.0.1:8102</code> (TLS + Scoped JWT) → <code>synapse_auto_server.py</code>
+        </div>
+        <div id="supportTools"></div>
+      </div>
+
+      <div class="card">
+        <h2><span>Cross-System Judge Prompts</span></h2>
+        <button class="scenario-btn" onclick="runPrompt('Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?')">
+          <small>Prompt 1 · Cross-System Blast Radius</small>
+          Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?
+        </button>
+        <button class="scenario-btn" onclick="runPrompt('Check all open P1 support tickets, inspect their linked orders, and verify if replacement warehouse inventory is in stock.')">
+          <small>Prompt 2 · P1 SLA × Warehouse Inventory</small>
+          Check all open P1 support tickets and verify if replacement warehouse inventory is in stock.
+        </button>
+        <button class="scenario-btn" onclick="runPrompt('Find delayed shipments where Enterprise customers have no ticket yet, and open proactive support alerts.')">
+          <small>Prompt 3 · Proactive Cross-System Writeback</small>
+          Find delayed Enterprise orders with no ticket yet and open proactive CareDesk alerts.
+        </button>
+        <button class="scenario-btn" onclick="runPrompt('Expedite and reroute delayed shipment SHP-402 via air freight and update affected CareDesk support tickets.')">
+          <small>Prompt 4 · Live Update Verification (--discover)</small>
+          Expedite and reroute SHP-402 via air freight and update affected CareDesk tickets.
+        </button>
+      </div>
+    </section>
+
+    <section>
+      <div class="card">
+        <div class="query-box">
+          <input id="questionInput" type="text" maxlength="1000" value="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?" onkeydown="if(event.key==='Enter') submitQuestion()" />
+          <button id="askBtn" class="btn-primary" onclick="submitQuestion()">Ask Copilot →</button>
+        </div>
+
+        <div class="meta-strip" id="metaStrip" style="display:none;"></div>
+        <div class="answer-body" id="answerBox">
+          <p style="color:var(--muted);">Select a cross-system scenario on the left or click <strong>🛡️ Simulate False-Auth Attacks</strong> above to test live intrusion recognition.</p>
+        </div>
+      </div>
+
+      <div class="card" id="attackSimCard" style="display:none;">
+        <h2>
+          <span>Live False-Auth &amp; Lateral-Movement Simulation Results</span>
+          <span class="sys-badge sys-tls" id="attackSimBadge">4/4 Blocked</span>
+        </h2>
+        <div id="attackSimBody"></div>
+      </div>
+
+      <div class="card" id="discoverCard" style="display:none;">
+        <h2>
+          <span>Live <code>synapse build --discover</code> Output</span>
+          <span class="sys-badge sys-orders" id="discoverBadge">Rebuild Complete</span>
+        </h2>
+        <div class="terminal" id="discoverTerminal"></div>
+      </div>
+
+      <div class="card">
+        <h2>
+          <span>Encrypted MCP Stdio → HTTPS Tool-Call Trace</span>
+          <span id="traceSummary" style="font-size:12px;color:var(--muted);">0 calls</span>
+        </h2>
+        <div id="traceList">
+          <div style="color:var(--muted);font-size:13px;">Every tool invocation is signed with an audience-scoped JWT + HMAC-SHA256 nonce and sent over CA-verified TLS 1.3.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function escapeHtml(val) {
+      return String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderMarkdown(md) {
+      const lines = String(md ?? '').split('\n');
+      let html = '';
+      let inTable = false;
+      let tableRows = [];
+      let inList = false;
+
+      const inlineFmt = (s) => escapeHtml(s)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      const flushTable = () => {
+        if (!inTable) return;
+        inTable = false;
+        if (tableRows.length < 2) return;
+        const headers = tableRows[0].split('|').slice(1, -1).map(c => c.trim());
+        const body = tableRows.slice(2);
+        html += '<table><thead><tr>' + headers.map(h => `<th>${inlineFmt(h)}</th>`).join('') + '</tr></thead><tbody>';
+        for (const r of body) {
+          const cols = r.split('|').slice(1, -1).map(c => c.trim());
+          html += '<tr>' + cols.map(c => `<td>${inlineFmt(c)}</td>`).join('') + '</tr>';
+        }
+        html += '</tbody></table>';
+        tableRows = [];
+      };
+
+      const flushList = () => {
+        if (inList) { html += '</ul>'; inList = false; }
+      };
+
+      for (const raw of lines) {
+        const line = raw.trimEnd();
+        if (line.trim().startsWith('|')) {
+          flushList();
+          inTable = true;
+          tableRows.push(line.trim());
+          continue;
+        } else {
+          flushTable();
+        }
+        if (line.startsWith('### ')) { flushList(); html += `<h3>${inlineFmt(line.slice(4))}</h3>`; }
+        else if (line.startsWith('#### ')) { flushList(); html += `<h4>${inlineFmt(line.slice(5))}</h4>`; }
+        else if (line.startsWith('- ') || /^\d+\.\s/.test(line)) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          const cleaned = line.replace(/^(-\s|\d+\.\s)/, '');
+          html += `<li>${inlineFmt(cleaned)}</li>`;
+        } else if (line.trim() === '') {
+          flushList();
+        } else {
+          flushList();
+          html += `<p>${inlineFmt(line)}</p>`;
+        }
+      }
+      flushTable();
+      flushList();
+      return html;
+    }
+
+    async function refreshStatus() {
+      const res = await fetch('/api/status');
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.security && data.security.tls) {
+        const tls = data.security.tls;
+        document.getElementById('tlsCipherBadge').textContent = `${tls.protocol} · ${tls.key_bits}-bit`;
+        document.getElementById('tlsSummaryText').innerHTML =
+          `Backend Hop: <code>${escapeHtml(tls.protocol)}</code> · <code>${escapeHtml(tls.cipher)}</code> · Studio UI: <code>${escapeHtml(data.security.browser_to_studio_scheme)}</code><br/>` +
+          `Auth: <strong>Asymmetric ES256 JWT (Public-Key Verified) + Isolated HMAC-SHA256</strong>`;
+        document.getElementById('authOkCount').textContent = data.security.authenticated_calls_total;
+        document.getElementById('authBlockedCount').textContent = data.security.blocked_false_auth_total;
+
+        const events = data.security.recent_false_auth_events || [];
+        document.getElementById('falseAuthEventsBox').innerHTML = events.slice(0, 4).map(ev => `
+          <div class="event-row">
+            <strong>[${escapeHtml(ev.status_code)}] ${escapeHtml(ev.category)}</strong> on <code>${escapeHtml(ev.service)}</code><br/>
+            <span style="color:var(--muted);">${escapeHtml(ev.detail)}</span>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('ordersCount').textContent = `${data.orders_service.tools_count} MCP Tools`;
+      document.getElementById('ordersTools').innerHTML = data.orders_service.tools.map(t => {
+        const isNew = t.name === 'expedite_reroute_shipment';
+        return `<span class="tool-chip ${isNew ? 'new-tool' : ''}" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}${isNew ? ' ★ NEW' : ''}</span>`;
+      }).join('');
+
+      document.getElementById('supportCount').textContent = `${data.support_service.tools_count} MCP Tools`;
+      document.getElementById('supportTools').innerHTML = data.support_service.tools.map(t =>
+        `<span class="tool-chip" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}</span>`
+      ).join('');
+
+      const btn = document.getElementById('btnLiveDiscover');
+      if (data.live_endpoint_enabled) {
+        btn.classList.add('active');
+        btn.textContent = '✓ Live Endpoint Active (expedite_reroute_shipment)';
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = '⚡ Live Add Endpoint + synapse build --discover';
+      }
+    }
+
+    async function simulateAttacks() {
+      const btn = document.getElementById('btnShield');
+      btn.disabled = true;
+      btn.textContent = 'Probing Defenses...';
+      try {
+        const res = await fetch('/api/security/simulate-attacks', { method: 'POST' });
+        const data = await res.json();
+        const card = document.getElementById('attackSimCard');
+        card.style.display = 'block';
+        document.getElementById('attackSimBadge').textContent = data.all_attacks_blocked
+          ? '✓ 4/4 Attacks Recognized & Blocked'
+          : 'Check Alert';
+        document.getElementById('attackSimBody').innerHTML = (data.simulations || []).map(s => `
+          <div class="trace-item" style="border-color:rgba(16,185,129,0.35);">
+            <div class="trace-head">
+              <strong>${escapeHtml(s.attack)}</strong>
+              <span class="sys-badge sys-alert">HTTP ${escapeHtml(s.status_code)} BLOCKED</span>
+            </div>
+            <div style="margin-top:4px;color:var(--muted);">
+              Target: <code>${escapeHtml(s.target)}</code> → Recognized: <em>${escapeHtml(s.response)}</em>
+            </div>
+          </div>
+        `).join('');
+        await refreshStatus();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🛡️ Simulate False-Auth Attacks';
+      }
+    }
+
+    function runPrompt(q) {
+      document.getElementById('questionInput').value = q;
+      submitQuestion();
+    }
+
+    async function submitQuestion() {
+      const q = document.getElementById('questionInput').value.trim();
+      if (!q) return;
+      const btn = document.getElementById('askBtn');
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+      document.getElementById('answerBox').innerHTML = '<p style="color:var(--cyan);">Querying TLS-encrypted SupplyPulse &amp; CareDesk MCP channels...</p>';
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById('answerBox').innerHTML = `<p style="color:var(--rose);">Error: ${escapeHtml(data.detail || 'Request failed')}</p>`;
+          return;
+        }
+
+        const strip = document.getElementById('metaStrip');
+        strip.style.display = 'flex';
+        const latencyLabel = data.llm_used
+          ? `⚡ MCP: ${escapeHtml(data.mcp_transport_latency_ms)} ms + LLM: ${escapeHtml(data.llm_inference_latency_ms)} ms`
+          : `⚡ MCP Transport: ${escapeHtml(data.mcp_transport_latency_ms)} ms (Rule-Based Orchestrator, 0 LLM ms)`;
+        strip.innerHTML = `
+          <span class="pill ok">🔒 TLS 1.3 + ES256 JWT/HMAC</span>
+          <span class="pill ${data.cross_system_verified ? 'ok' : ''}">
+            ${data.cross_system_verified ? '✓ Cross-System Join (2 MCP Servers)' : '1 MCP Server Used'}
+          </span>
+          <span class="pill fast">${latencyLabel}</span>
+          <span class="pill">${escapeHtml(data.tool_calls_count)} MCP Calls</span>
+        `;
+
+        document.getElementById('answerBox').innerHTML = renderMarkdown(data.answer);
+        document.getElementById('traceSummary').textContent = `${data.tool_calls_count} TLS+HMAC verified calls in ${data.total_latency_ms} ms`;
+        document.getElementById('traceList').innerHTML = data.trace.map((step, idx) => `
+          <details class="trace-item">
+            <summary class="trace-head">
+              <span>
+                <strong>#${idx + 1}</strong>
+                <span class="sys-badge ${step.server.includes('orders') ? 'sys-orders' : 'sys-support'}">${escapeHtml(step.system_badge)}</span>
+                <code style="margin-left:6px;color:#f8fafc;">${escapeHtml(step.tool)}(${escapeHtml(JSON.stringify(step.arguments))})</code>
+              </span>
+              <span style="color:var(--muted);">${escapeHtml(step.latency_ms)} ms · 🔒</span>
+            </summary>
+            <pre style="margin:8px 0 0;font-size:11.5px;color:#cbd5e1;overflow-x:auto;">${escapeHtml(JSON.stringify(step.output, null, 2))}</pre>
+          </details>
+        `).join('');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ask Copilot →';
+        await refreshStatus();
+      }
+    }
+
+    async function triggerLiveDiscover() {
+      const btn = document.getElementById('btnLiveDiscover');
+      const resetBtn = document.getElementById('btnReset');
+      if (btn.disabled) return;
+      btn.disabled = true;
+      resetBtn.disabled = true;
+      btn.textContent = 'Running synapse build --discover...';
+      try {
+        const res = await fetch('/api/live-discover/enable', { method: 'POST' });
+        const data = await res.json();
+        document.getElementById('discoverCard').style.display = 'block';
+        document.getElementById('discoverBadge').textContent = res.ok ? `+ ${data.added_tool}` : 'Build Error';
+        document.getElementById('discoverTerminal').textContent = res.ok
+          ? `$ ${data.command}\n\n${data.stdout}`
+          : `Error: ${data.detail || 'Rebuild failed'}`;
+        await refreshStatus();
+      } finally {
+        btn.disabled = false;
+        resetBtn.disabled = false;
+      }
+    }
+
+    async function resetDemo() {
+      const btn = document.getElementById('btnReset');
+      if (btn.disabled) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/live-discover/reset', { method: 'POST' });
+        const data = await res.json();
+        document.getElementById('attackSimCard').style.display = 'none';
+        document.getElementById('discoverCard').style.display = 'block';
+        document.getElementById('discoverBadge').textContent = 'Baseline Restored';
+        document.getElementById('discoverTerminal').textContent = `$ ${data.command}\n\n${data.stdout}`;
+        await refreshStatus();
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    refreshStatus();
+  </script>
+</body>
+</html>

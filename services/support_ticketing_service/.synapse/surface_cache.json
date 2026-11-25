@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "repo_hash": "4dbfd071c1ce04bc5742987f630b1eac47f5259fefedda38ddc17bac471c4ca7",
+  "language": "python",
+  "framework": "fastapi",
+  "package_import_root": "app",
+  "captured_functions": false,
+  "files": {
+    "app.py": {
+      "sha": "2085c6656f94599508e650a100016065040fedbba8bd7e0ccda993d0dbb73cc4",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "handler_module": "app",
+          "handler_qualname": "health_check",
+          "description": "Internal liveness probe (not exposed to AI agents).",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "health_check",
+          "file_path": "app.py",
+          "start_line": 102,
+          "end_line": 104
+        },
+        {
+          "method": "POST",
+          "path": "/internal/reset-demo-state",
+          "handler_module": "app",
+          "handler_qualname": "reset_demo_state",
+          "description": "Internal test helper to reset in-memory tickets between hackathon demo runs.",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "reset_demo_state",
+          "file_path": "app.py",
+          "start_line": 108,
+          "end_line": 113
+        },
+        {
+          "method": "GET",
+          "path": "/tickets",
+          "handler_module": "app",
+          "handler_qualname": "list_support_tickets",
+          "description": "Search and filter customer support tickets by customer_id, order_id, priority, or status.",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "list_support_tickets",
+          "file_path": "app.py",
+          "start_line": 117,
+          "end_line": 133
+        },
+        {
+          "method": "GET",
+          "path": "/tickets/{ticket_id}",
+          "handler_module": "app",
+          "handler_qualname": "get_ticket_by_id",
+          "description": "Retrieve full support ticket details, SLA countdown, sentiment, and notes for a ticket ID (e.g. TCK-901).",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "get_ticket_by_id",
+          "file_path": "app.py",
+          "start_line": 137,
+          "end_line": 142
+        },
+        {
+          "method": "POST",
+          "path": "/tickets",
+          "handler_module": "app",
+          "handler_qualname": "create_proactive_ticket",
+          "description": "Create a new support or proactive outreach ticket for an impacted customer order.",
+          "payload_example": {
+            "customer_id": "",
+            "customer_name": "",
+            "order_id": "",
+            "priority": "",
+            "subject": "",
+            "initial_note": ""
+          },
+          "headers_hint": [],
+          "suggested_tool_name": "create_proactive_ticket",
+          "file_path": "app.py",
+          "start_line": 146,
+          "end_line": 167
+        },
+        {
+          "method": "PATCH",
+          "path": "/tickets/{ticket_id}/escalate",
+          "handler_module": "app",
+          "handler_qualname": "update_or_escalate_ticket",
+          "description": "Escalate or update an existing support ticket with cross-system shipment/inventory resolution notes.",
+          "payload_example": {
+            "priority": "",
+            "status": "",
+            "resolution_note": ""
+          },
+          "headers_hint": [],
+          "suggested_tool_name": "update_or_escalate_ticket",
+          "file_path": "app.py",
+          "start_line": 171,
+          "end_line": 184
+        }
+      ],
+      "functions": []
+    },
+    "undefined": {}
+  },
+  "lines_scanned": 195,
+  "updated_at": 1795614615724
+}

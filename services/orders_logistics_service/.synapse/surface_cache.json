@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "repo_hash": "9ada0ee1b450cb2b527fb060cae9f98cce3d1eb7fe08f3704b41a5878b0aad9a",
+  "language": "python",
+  "framework": "fastapi",
+  "package_import_root": "app",
+  "captured_functions": false,
+  "files": {
+    "app.py": {
+      "sha": "b8815940f4d3719c5c65bccdaf3affffe935461135ff2518a21b41580b8cbbf3",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "handler_module": "app",
+          "handler_qualname": "health_check",
+          "description": "Internal liveness probe (not exposed to AI agents).",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "health_check",
+          "file_path": "app.py",
+          "start_line": 253,
+          "end_line": 255
+        },
+        {
+          "method": "GET",
+          "path": "/internal/security-telemetry",
+          "handler_module": "app",
+          "handler_qualname": "internal_security_telemetry",
+          "description": "Internal protected endpoint returning false-auth intrusion detection metrics.",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "internal_security_telemetry",
+          "file_path": "app.py",
+          "start_line": 259,
+          "end_line": 261
+        },
+        {
+          "method": "POST",
+          "path": "/internal/reset-demo-state",
+          "handler_module": "app",
+          "handler_qualname": "reset_demo_state",
+          "description": "Internal protected helper to reset in-memory state between hackathon demo runs.",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "reset_demo_state",
+          "file_path": "app.py",
+          "start_line": 265,
+          "end_line": 273
+        },
+        {
+          "method": "GET",
+          "path": "/shipments/delayed",
+          "handler_module": "app",
+          "handler_qualname": "list_delayed_shipments",
+          "description": "List all unmitigated delayed freight shipments, including delay hours, reason, carrier, and affected order IDs.",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "list_delayed_shipments",
+          "file_path": "app.py",
+          "start_line": 277,
+          "end_line": 281
+        },
+        {
+          "method": "GET",
+          "path": "/shipments/{shipment_id}",
+          "handler_module": "app",
+          "handler_qualname": "get_shipment_details",
+          "description": "Get detailed status, delay reason, ETA, and affected order IDs for a specific shipment ID (e.g. SHP-402).",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "get_shipment_details",
+          "file_path": "app.py",
+          "start_line": 285,
+          "end_line": 291
+        },
+        {
+          "method": "GET",
+          "path": "/orders/{order_id}",
+          "handler_module": "app",
+          "handler_qualname": "get_order_by_id",
+          "description": "Fetch customer details, account tier, contract value, SKUs, and quantities for a specific order ID (e.g. ORD-7801).",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "get_order_by_id",
+          "file_path": "app.py",
+          "start_line": 295,
+          "end_line": 301
+        },
+        {
+          "method": "GET",
+          "path": "/orders/by-shipment/{shipment_id}",
+          "handler_module": "app",
+          "handler_qualname": "get_orders_by_shipment",
+          "description": "Fetch all customer orders travelling inside a specific freight shipment ID (e.g. SHP-402).",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "get_orders_by_shipment",
+          "file_path": "app.py",
+          "start_line": 305,
+          "end_line": 310
+        },
+        {
+          "method": "GET",
+          "path": "/inventory/{sku}",
+          "handler_module": "app",
+          "handler_qualname": "get_inventory_by_sku",
+          "description": "Check real-time warehouse stock levels, regional breakdown, and reorder status for a product SKU.",
+          "payload_example": null,
+          "headers_hint": [],
+          "suggested_tool_name": "get_inventory_by_sku",
+          "file_path": "app.py",
+          "start_line": 314,
+          "end_line": 324
+        }
+      ],
+      "functions": []
+    }
+  },
+  "lines_scanned": 326,
+  "updated_at": 1795624409122
+}
