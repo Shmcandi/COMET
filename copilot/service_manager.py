@@ -30,11 +30,11 @@ CA_CERT_PATH, SERVER_CERT_PATH, SERVER_KEY_PATH = ensure_tls_certificates()
 # Control-plane holds the ES256 private key; backends ONLY ever receive ISSUER_PUBLIC_KEY_PEM!
 ISSUER_PRIVATE_KEY_PEM, ISSUER_PUBLIC_KEY_PEM = generate_es256_keypair_pem()
 
-INTERNAL_ADMIN_TOKEN = os.environ.get("NEXUSOPS_INTERNAL_TOKEN") or secrets.token_urlsafe(32)
+INTERNAL_ADMIN_TOKEN = os.environ.get("COMET_INTERNAL_TOKEN") or secrets.token_urlsafe(32)
 SUPPLYPULSE_HMAC_SECRET = os.environ.get("SUPPLYPULSE_HMAC_SECRET") or secrets.token_urlsafe(32)
 CAREDESK_HMAC_SECRET = os.environ.get("CAREDESK_HMAC_SECRET") or secrets.token_urlsafe(32)
 
-os.environ["NEXUSOPS_INTERNAL_TOKEN"] = INTERNAL_ADMIN_TOKEN
+os.environ["COMET_INTERNAL_TOKEN"] = INTERNAL_ADMIN_TOKEN
 
 SERVICES = {
     "orders": {
@@ -69,7 +69,7 @@ _SAFE_ENV_KEYS = (
 
 
 def create_verified_ssl_context() -> ssl.SSLContext:
-    """Returns a strict RFC 5280 TLS verification context pinned to our NexusOps Root CA."""
+    """Returns a strict RFC 5280 TLS verification context pinned to our COMET Root CA."""
     ensure_tls_certificates()
     ctx = ssl.create_default_context(cafile=str(CA_CERT_PATH))
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -108,7 +108,7 @@ class BackendServiceManager:
         ensure_tls_certificates()
         cfg = SERVICES[key]
         env = {k: os.environ[k] for k in _SAFE_ENV_KEYS if k in os.environ}
-        env["NEXUSOPS_INTERNAL_TOKEN"] = INTERNAL_ADMIN_TOKEN
+        env["COMET_INTERNAL_TOKEN"] = INTERNAL_ADMIN_TOKEN
         # Strict compartmentalization: ONLY the public key + THIS service's own HMAC secret!
         env["ISSUER_PUBLIC_KEY_PEM"] = ISSUER_PUBLIC_KEY_PEM
         env[cfg["hmac_env_name"]] = cfg["hmac_secret"]

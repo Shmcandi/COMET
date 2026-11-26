@@ -1,1 +1,1 @@
-"""NexusOps Cross-System MCP Copilot package."""
+"""COMET Cross-System MCP Copilot package."""

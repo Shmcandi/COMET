@@ -1,4 +1,4 @@
-# NexusOps — Cross-System Supply Chain & Support Copilot
+# COMET — Cross-System Supply Chain & Support Copilot
 
 **2nd Brain Labs × Geek Room: Vibe-a-thon Submission**  
 **Selected Track:** **Problem Statement 3 — *A copilot that works across two systems*** (`Synapse Auto Mode` + Live `synapse build --discover`)
@@ -11,7 +11,7 @@ Enterprise operations teams lose hours switching between disconnected silos duri
 - **System 1 — `SupplyPulse ERP` (`services/orders_logistics_service`, Port `8101`)**: Knows which freight corridors are delayed, which customer orders are onboard, contract ARR tiers, and regional warehouse inventory — **but knows nothing about customer sentiment, SLA timers, or open support escalations.**
 - **System 2 — `CareDesk CRM` (`services/support_ticketing_service`, Port `8102`)**: Tracks P1/P2 customer support tickets, SLA breach countdowns, and customer escalations — **but has zero visibility into freight delays or whether backup replacement inventory sits in a nearby hub.**
 
-Using **`@2ndbrainlabs-ai/synapse-cli` (v0.1.9)** in **Auto Mode**, we turned both untouched legacy FastAPI backends into standalone **Model Context Protocol (MCP)** servers (`synapse_auto_server.py`) in seconds, and built **NexusOps Copilot** — an agent that queries and coordinates actions across both systems simultaneously, including **live hot-discovery (`synapse build --discover`)** when new backend capabilities ship.
+Using **`@2ndbrainlabs-ai/synapse-cli` (v0.1.9)** in **Auto Mode**, we turned both untouched legacy FastAPI backends into standalone **Model Context Protocol (MCP)** servers (`synapse_auto_server.py`) in seconds, and built **COMET Copilot** — an agent that queries and coordinates actions across both systems simultaneously, including **live hot-discovery (`synapse build --discover`)** when new backend capabilities ship.
 
 ---
 
@@ -50,9 +50,9 @@ Then open **http://127.0.0.1:8100** to:
 
 ## 4. Zero-Trust End-to-End Security & False-Auth Recognition
 
-Every hop in **NexusOps** is hardened against eavesdropping, credential spoofing, lateral movement, and replay attacks — while keeping Synapse's generated `synapse_auto_server.py` **100% unmodified**:
+Every hop in **COMET** is hardened against eavesdropping, credential spoofing, lateral movement, and replay attacks — while keeping Synapse's generated `synapse_auto_server.py` **100% unmodified**:
 
-- **Local X.509 PKI & Strict TLS 1.3 (`security/pki.py`)**: Automatically generates an ECDSA P-256 Root CA (`certs/nexusops_ca.pem`) and SAN server certificate (`127.0.0.1`, `localhost`). Both `SupplyPulse ERP` (`https://127.0.0.1:8101`) and `CareDesk CRM` (`https://127.0.0.1:8102`) run exclusively over HTTPS (`TLSv1.3`), verified strictly via `REQUESTS_CA_BUNDLE` (zero `verify=False`).
+- **Local X.509 PKI & Strict TLS 1.3 (`security/pki.py`)**: Automatically generates an ECDSA P-256 Root CA (`certs/comet_ca.pem`) and SAN server certificate (`127.0.0.1`, `localhost`). Both `SupplyPulse ERP` (`https://127.0.0.1:8101`) and `CareDesk CRM` (`https://127.0.0.1:8102`) run exclusively over HTTPS (`TLSv1.3`), verified strictly via `REQUESTS_CA_BUNDLE` (zero `verify=False`).
 - **Compartmentalized Asymmetric `ES256` JWT + HMAC-SHA256 Signing (`./security/auth_guard.py`, `./security/authenticated_mcp_runner.py`)**:
   - Backends receive **only** `ISSUER_PUBLIC_KEY_PEM` (zero shared JWT secrets) plus their own isolated HMAC secret.
   - `authenticated_mcp_runner.py` wraps unmodified `synapse_auto_server.py` explicitly (no hidden `sitecustomize.py` hooks), attaching `Authorization: Bearer <ES256_JWT>`, `X-Request-Timestamp` (±60s), `X-Request-Nonce`, and `X-Request-Signature` (`HMAC-SHA256`).
@@ -71,4 +71,4 @@ Every hop in **NexusOps** is hardened against eavesdropping, credential spoofing
 Copy [`mcp_client_config.json`](./mcp_client_config.json) into your MCP client's `mcpServers` block (make sure both FastAPI backends are running via `start_studio.py`).
 
 ### Optional Live LLM Key Configuration
-NexusOps works **100% out of the box with zero API keys** via its built-in Cross-System MCP ReAct Planner over real `mcp.client.stdio` sessions, and automatically upgrades to live LLM tool-calling if you set any of `GROQ_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY` in `.env`.
+COMET works **100% out of the box with zero API keys** via its built-in Cross-System MCP ReAct Planner over real `mcp.client.stdio` sessions, and automatically upgrades to live LLM tool-calling if you set any of `GROQ_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY` in `.env`.

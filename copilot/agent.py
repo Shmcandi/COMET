@@ -1,4 +1,4 @@
-"""NexusOps Cross-System MCP Copilot (Hardened + Parallel Low-Latency Execution).
+"""COMET Cross-System MCP Copilot (Hardened + Parallel Low-Latency Execution).
 
 Connects to both Synapse-generated MCP servers simultaneously:
 1. `orders_logistics_service` (SupplyPulse ERP: Shipments, Orders, Inventory)
@@ -38,11 +38,11 @@ def _detect_llm_config() -> Optional[Dict[str, str]]:
     return None
 
 
-class NexusOpsCopilot:
+class CometCopilot:
     """Agentic Copilot operating across SupplyPulse ERP and CareDesk CRM via Synapse MCP servers."""
 
     SYSTEM_PROMPT = (
-        "You are NexusOps Copilot, an enterprise operations AI connected via Synapse-generated MCP servers "
+        "You are COMET Copilot, an enterprise operations AI connected via Synapse-generated MCP servers "
         "to TWO independent systems:\n"
         "1. SupplyPulse ERP (`orders_logistics_service`): freight shipments, affected orders, customer contract tiers, and warehouse stock.\n"
         "2. CareDesk CRM (`support_ticketing_service`): customer support tickets, SLA breach timers, proactive ticket creation, and ticket escalations.\n\n"
@@ -494,7 +494,7 @@ class NexusOpsCopilot:
                             "priority": "P1",
                             "subject": f"Proactive Alert: Shipment {shp['shipment_id']} delayed ({shp['delay_hours']}h) — backup stock reserved",
                             "initial_note": (
-                                f"Detected via NexusOps Cross-System Copilot: Enterprise order {order['order_id']} "
+                                f"Detected via COMET Cross-System Copilot: Enterprise order {order['order_id']} "
                                 f"(${order['order_total_usd']:,}) on {shp['shipment_id']} is delayed due to {shp['delay_reason']}. "
                                 f"Nearest hub {order['nearest_hub']} checked for backup dispatch."
                             ),

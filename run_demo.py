@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
-from copilot.agent import NexusOpsCopilot
+from copilot.agent import CometCopilot
 from copilot.live_discover import (
     disable_live_endpoint_and_rebuild,
     enable_live_endpoint_and_rebuild,
@@ -26,7 +26,7 @@ def _banner(title: str) -> None:
 async def main() -> None:
     manager = BackendServiceManager()
     bridge = MultiSystemMCPBridge(persistent=True)
-    copilot = NexusOpsCopilot()
+    copilot = CometCopilot()
 
     try:
         disable_live_endpoint_and_rebuild()

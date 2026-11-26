@@ -1,4 +1,4 @@
-"""Authenticated & TLS-Backed Hackathon Studio Server for NexusOps × Synapse."""
+"""Authenticated & TLS-Backed Hackathon Studio Server for COMET × Synapse."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from copilot.agent import NexusOpsCopilot
+from copilot.agent import CometCopilot
 from copilot.live_discover import (
     disable_live_endpoint_and_rebuild,
     enable_live_endpoint_and_rebuild,
@@ -44,12 +44,12 @@ from security.auth_guard import (
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ALLOWED_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]", "testserver"}
-STUDIO_AUDIENCE = "nexusops_studio_ui"
-STUDIO_COOKIE_NAME = "nexusops_studio_session"
+STUDIO_AUDIENCE = "comet_studio_ui"
+STUDIO_COOKIE_NAME = "comet_studio_session"
 
 manager = BackendServiceManager()
 mcp_pool = MultiSystemMCPBridge(persistent=True)
-copilot = NexusOpsCopilot()
+copilot = CometCopilot()
 _mutation_lock = asyncio.Lock()
 _http_client: httpx.AsyncClient | None = None
 _studio_false_auth_events: List[Dict[str, Any]] = []
@@ -131,7 +131,7 @@ async def lifespan(app: FastAPI):
         manager.stop_all()
 
 
-app = FastAPI(title="NexusOps × Synapse Hackathon Studio", lifespan=lifespan)
+app = FastAPI(title="COMET × Synapse Hackathon Studio", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 

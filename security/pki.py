@@ -14,9 +14,9 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CERTS_DIR = PROJECT_ROOT / "certs"
-CA_CERT_PATH = CERTS_DIR / "nexusops_ca.pem"
-SERVER_CERT_PATH = CERTS_DIR / "nexusops_server.pem"
-SERVER_KEY_PATH = CERTS_DIR / "nexusops_server_key.pem"
+CA_CERT_PATH = CERTS_DIR / "comet_ca.pem"
+SERVER_CERT_PATH = CERTS_DIR / "comet_server.pem"
+SERVER_KEY_PATH = CERTS_DIR / "comet_server_key.pem"
 
 
 def ensure_tls_certificates(force_regenerate: bool = False) -> Tuple[Path, Path, Path]:
@@ -36,8 +36,8 @@ def ensure_tls_certificates(force_regenerate: bool = False) -> Tuple[Path, Path,
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca_subject = x509.Name(
         [
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "NexusOps Enterprise Security CA"),
-            x509.NameAttribute(NameOID.COMMON_NAME, "NexusOps Local Root CA"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "COMET Enterprise Security CA"),
+            x509.NameAttribute(NameOID.COMMON_NAME, "COMET Local Root CA"),
         ]
     )
     ca_ski = x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key())
@@ -73,7 +73,7 @@ def ensure_tls_certificates(force_regenerate: bool = False) -> Tuple[Path, Path,
     srv_key = ec.generate_private_key(ec.SECP256R1())
     srv_subject = x509.Name(
         [
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "NexusOps Microservices"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "COMET Microservices"),
             x509.NameAttribute(NameOID.COMMON_NAME, "127.0.0.1"),
         ]
     )

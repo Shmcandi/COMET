@@ -8,7 +8,7 @@
       ],
       "env": {
         "ENDPOINT_BASE_URL": "https://127.0.0.1:8101",
-        "REQUESTS_CA_BUNDLE": "./certs/nexusops_ca.pem",
+        "REQUESTS_CA_BUNDLE": "./certs/comet_ca.pem",
         "MCP_SERVICE_JWT": "${SUPPLYPULSE_ES256_JWT}",
         "MCP_HMAC_SECRET": "${SUPPLYPULSE_HMAC_SECRET}"
       }
@@ -21,7 +21,7 @@
       ],
       "env": {
         "ENDPOINT_BASE_URL": "https://127.0.0.1:8102",
-        "REQUESTS_CA_BUNDLE": "./certs/nexusops_ca.pem",
+        "REQUESTS_CA_BUNDLE": "./certs/comet_ca.pem",
         "MCP_SERVICE_JWT": "${CAREDESK_ES256_JWT}",
         "MCP_HMAC_SECRET": "${CAREDESK_HMAC_SECRET}"
       }

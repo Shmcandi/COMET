@@ -26,7 +26,7 @@ app = FastAPI(
 
 _STATE_LOCK = threading.RLock()
 _ID_PATTERN = re.compile(r"^[A-Z0-9-]{2,32}$")
-_INTERNAL_TOKEN = os.environ.get("NEXUSOPS_INTERNAL_TOKEN", "")
+_INTERNAL_TOKEN = os.environ.get("COMET_INTERNAL_TOKEN", "")
 _AUTH_GUARD = FalseAuthRecognitionGuard(
     service_name="orders_logistics_service",
     issuer_public_key_pem=os.environ.get("ISSUER_PUBLIC_KEY_PEM", ""),

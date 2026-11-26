@@ -61,7 +61,7 @@ def run_all_checks() -> None:
             "Forged Studio Bearer token must return 401",
         )
         r_index = client.get("/")
-        check(r_index.status_code == 200 and "nexusops_studio_session" in client.cookies, "Index must set session cookie")
+        check(r_index.status_code == 200 and "comet_studio_session" in client.cookies, "Index must set session cookie")
         check(
             client.post(
                 "/api/ask",
@@ -94,7 +94,7 @@ def run_all_checks() -> None:
             httpx.get("https://127.0.0.1:8101/health", verify=ssl.create_default_context(), timeout=1.5)
         except httpx.ConnectError:
             untrusted_rejected = True
-        check(untrusted_rejected, "System CA without NexusOps Root CA must reject backend cert")
+        check(untrusted_rejected, "System CA without COMET Root CA must reject backend cert")
         print(f"[PASS] Suite 3: Backend HTTPS ({tls_meta['protocol']} · {tls_meta['cipher']}) & CA pinning ({assertions_passed} cumulative)")
 
         # Suite 4: Asymmetric ES256 False-Auth Recognition, Nonce Replay & Brute-Force Lockout (4 assertions)

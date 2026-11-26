@@ -1,4 +1,4 @@
-# NexusOps × Synapse — Architecture, Security & Verification Report
+# COMET × Synapse — Architecture, Security & Verification Report
 
 **Event:** 2nd Brain Labs × Geek Room Vibe-a-thon  
 **Track Selected:** **Problem Statement 3 — *A copilot that works across two systems*** (`Synapse Auto Mode` + Live `synapse build --discover`)
@@ -32,8 +32,8 @@ Enterprise operations teams lose critical SLA minutes correlating disconnected s
 
 ```mermaid
 flowchart LR
-    Browser["Operator Browser"] -->|"HTTP default / HTTPS (--https) + HttpOnly ES256 Cookie"| Studio["NexusOps Studio (:8100)"]
-    Studio --> Copilot["NexusOps Copilot (./copilot/agent.py)"]
+    Browser["Operator Browser"] -->|"HTTP default / HTTPS (--https) + HttpOnly ES256 Cookie"| Studio["COMET Studio (:8100)"]
+    Studio --> Copilot["COMET Copilot (./copilot/agent.py)"]
     Copilot -->|"Local OS stdio pipe"| Runner1["authenticated_mcp_runner.py -> SupplyPulse MCP"]
     Copilot -->|"Local OS stdio pipe"| Runner2["authenticated_mcp_runner.py -> CareDesk MCP"]
     Runner1 -->|"HTTPS TLS 1.3 + ES256 JWT (aud=orders) + HMAC"| S1["SupplyPulse ERP (https://127.0.0.1:8101)"]
@@ -54,13 +54,13 @@ Per Page 7 of the Participant Guide (*"Expose only what the agent needs. Fewer, 
 | :--- | :--- | :--- | :--- |
 | **1. Browser ↔ Studio (`:8100`)** ([`./dashboard/server.py`](./dashboard/server.py)) | `http://127.0.0.1:8100` *(avoids self-signed browser cert warnings during live judging)* | `https://127.0.0.1:8100` via `python start_studio.py --https` *(enables `TLSv1.3` + `Secure` cookie attribute)* | `HttpOnly; SameSite=Strict` `ES256` Studio Session JWT + loopback `Origin` & `Host` CSRF/DNS-rebinding guards |
 | **2. Copilot ↔ MCP Servers** ([`./copilot/mcp_bridge.py`](./copilot/mcp_bridge.py)) | Unencrypted OS anonymous kernel `stdio` pipes *(local parent-to-child IPC; never traverses a network socket)* | Process-isolated environment allowlist (`_SAFE_SUBPROCESS_ENV_KEYS`) | Only the parent Copilot process holds the pipe file descriptors; no listening TCP port exposed |
-| **3. MCP Runners ↔ Backends (`:8101`, `:8102`)** ([`./security/authenticated_mcp_runner.py`](./security/authenticated_mcp_runner.py)) | **Always-on `HTTPS` (`TLSv1.3` · `TLS_AES_256_GCM_SHA384`)** | Strict RFC 5280 `VERIFY_X509_STRICT` CA pinning (`REQUESTS_CA_BUNDLE=./certs/nexusops_ca.pem`) | Asymmetric `ES256` Bearer JWT (`aud`-scoped, verified via public key only) + per-service `HMAC-SHA256` timestamp/nonce signature |
+| **3. MCP Runners ↔ Backends (`:8101`, `:8102`)** ([`./security/authenticated_mcp_runner.py`](./security/authenticated_mcp_runner.py)) | **Always-on `HTTPS` (`TLSv1.3` · `TLS_AES_256_GCM_SHA384`)** | Strict RFC 5280 `VERIFY_X509_STRICT` CA pinning (`REQUESTS_CA_BUNDLE=./certs/comet_ca.pem`) | Asymmetric `ES256` Bearer JWT (`aud`-scoped, verified via public key only) + per-service `HMAC-SHA256` timestamp/nonce signature |
 
 ---
 
 ## 3. AI / Copilot Orchestration Layer & Hallucination Guardrails
 
-`NexusOpsCopilot` ([`./copilot/agent.py`](./copilot/agent.py)) discovers tools dynamically via `session.list_tools()` across both MCP servers and supports two execution modes:
+`CometCopilot` ([`./copilot/agent.py`](./copilot/agent.py)) discovers tools dynamically via `session.list_tools()` across both MCP servers and supports two execution modes:
 
 1. **Live LLM Tool-Calling Engine (`_run_llm_tool_loop`)**:
    - Activates automatically whenever an LLM key is present in `.env`, using a unified **OpenAI-compatible Chat Completions `/chat/completions` interface** across all supported providers:

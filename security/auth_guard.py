@@ -25,7 +25,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi import HTTPException, Request
 
-ISSUER = "nexusops-security-authority"
+ISSUER = "comet-security-authority"
 MAX_CLOCK_SKEW_SECONDS = 60
 BRUTE_FORCE_WINDOW_SECONDS = 30
 BRUTE_FORCE_THRESHOLD = 6
