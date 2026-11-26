@@ -72,6 +72,12 @@ Per Page 7 of the Participant Guide (*"Expose only what the agent needs. Fewer, 
 2. **Rule-Based Workflow Orchestrator — Offline / Zero-Key Fallback (`_run_deterministic_mcp_workflow`)**:
    - When no external LLM API key is configured (or if an upstream provider errors mid-demo), falls back to a deterministic, rule-based cross-system workflow orchestrator (not an LLM loop) so live demos remain 100% functional offline while still executing genuine JSON-RPC `CallToolRequest` calls through both Synapse MCP servers.
 
+### Blind LLM Agent (BLA) Privacy-Preserving Architecture (`./security/blind_llm_guard.py`)
+To prevent enterprise PII and confidential customer rosters from leaking to external LLM providers during cross-system reasoning, COMET implements **BLA (Blind LLM Agents)** via `BlindLLMVault`:
+- **Outbound Blinding (`blind_payload` / `blind_text`)**: Intercepts every MCP JSON payload before LLM ingestion, replacing `customer_name`, `assigned_to`, emails, and phone numbers with deterministic session-keyed `HMAC-SHA256` pseudonyms (`[ORG_BLIND_XXXXXX]`, `[STAFF_BLIND_XXXXXX]`). Because hashing is deterministic within a session, `"Apex BioLabs Pvt Ltd"` from `SupplyPulse` and `"Apex BioLabs Pvt Ltd"` from `CareDesk` resolve to the **exact same blind token**, preserving cross-system relational joins while keeping the LLM 100% blind to real identities.
+- **Writeback Argument Unblinding (`unblind_payload`)**: When the Blind LLM invokes a mutating MCP tool (e.g., `create_proactive_ticket(customer_name="[ORG_BLIND_A1F9]", ...)`), the local MCP boundary automatically restores `"Vanguard Robotics"` before calling `CareDesk`.
+- **Auditable Studio Inspector**: Operators and judges can click **🕶️ View: Blind LLM Context (Zero-PII)** in the Studio header to toggle live between the blinded `[ORG_BLIND_*]` LLM view and the unblinded operator view.
+
 ### Four Guardrails Against LLM Hallucinations & Prompt Injection
 - **Closed-World Tool Registry (`MultiSystemMCPBridge.call_tool`)**: Hallucinated tool names absent from `session.list_tools()` are caught and returned to the LLM as structured JSON error messages instead of raising unhandled exceptions.
 - **JSON-Schema Parameter Allowlisting (`validate_tool_arguments` in [`./copilot/mcp_bridge.py`](./copilot/mcp_bridge.py))**: Validates every argument key against `inputSchema.properties`, rejecting hallucinated extra arguments (`hallucinated_param=True`) before any HTTP request is sent.
@@ -107,9 +113,9 @@ Because all demo components run under one OS user on a single hackathon laptop, 
 
 ---
 
-## 6. Automated Verification Evidence (`26/26` Assertions Passed)
+## 6. Automated Verification Evidence (`32/32` Assertions Passed)
 
-[`./test_security_and_latency.py`](./test_security_and_latency.py) verifies 26 assertions across 6 suites (path-traversal & JSON-schema hallucination rejection, subprocess secret isolation, Studio `ES256` session/CSRF/DNS-rebinding guards, `TLSv1.3` CA pinning, all false-auth/nonce-replay/429-lockout vectors, `DEMO_HARNESS_ENABLED=0` lock, and live `synapse build --discover` + ERP idempotency):
+[`./test_security_and_latency.py`](./test_security_and_latency.py) verifies 32 assertions across 7 suites (path-traversal & JSON-schema hallucination rejection, subprocess secret isolation, Studio `ES256` session/CSRF/DNS-rebinding guards, `TLSv1.3` CA pinning, all false-auth/nonce-replay/429-lockout vectors, `DEMO_HARNESS_ENABLED=0` lock, live `synapse build --discover` + ERP idempotency, and Blind LLM Agent zero-PII tokenization/join/unblinding):
 
 ```text
 [PASS] Suite 1: Path-traversal, JSON-Schema hallucination guard & env isolation (9 assertions)
@@ -117,9 +123,10 @@ Because all demo components run under one OS user on a single hackathon laptop, 
 [PASS] Suite 3: Backend HTTPS (TLSv1.3 · TLS_AES_256_GCM_SHA384) & CA pinning (17 cumulative)
 [PASS] Suite 4: ES256 public-key audience spoof, nonce replay & 429 lockout (21 cumulative)
 [PASS] Suite 5: DEMO_HARNESS_ENABLED=0 blocks runtime route mutation (22 cumulative)
-[PASS] Suite 6: MCP transport=42.6ms (LLM=0.0ms), live --discover & ERP idempotency (26 cumulative)
+[PASS] Suite 6: MCP transport=44.0ms (LLM=0.0ms), live --discover & ERP idempotency (26 cumulative)
+[PASS] Suite 7: Blind LLM Agent (BLA) zero-PII tokenization, cross-system join & writeback unblinding (32 cumulative)
 
-SUMMARY: 26/26 assertions passed across 6 verification suites (0 failures).
+SUMMARY: 32/32 assertions passed across 7 verification suites (0 failures).
 ```
 
 ---

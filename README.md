@@ -53,6 +53,9 @@ Then open **http://127.0.0.1:8100** to:
 Every hop in **COMET** is hardened against eavesdropping, credential spoofing, lateral movement, and replay attacks — while keeping Synapse's generated `synapse_auto_server.py` **100% unmodified**:
 
 - **Local X.509 PKI & Strict TLS 1.3 (`security/pki.py`)**: Automatically generates an ECDSA P-256 Root CA (`certs/comet_ca.pem`) and SAN server certificate (`127.0.0.1`, `localhost`). Both `SupplyPulse ERP` (`https://127.0.0.1:8101`) and `CareDesk CRM` (`https://127.0.0.1:8102`) run exclusively over HTTPS (`TLSv1.3`), verified strictly via `REQUESTS_CA_BUNDLE` (zero `verify=False`).
+- **🕶️ Blind LLM Agents (BLA) Privacy Vault (`./security/blind_llm_guard.py`)**:
+  - Pseudonymizes sensitive customer organizations, staff identities, emails, and phone numbers via session-keyed `HMAC-SHA256` tokens (`[ORG_BLIND_XXXXXX]`, `[STAFF_BLIND_XXXXXX]`) **before** any MCP JSON response enters the LLM prompt context.
+  - Preserves deterministic cross-system relational joins (`SupplyPulse` + `CareDesk` map the same customer to the exact same blind token), automatically unblinds writeback tool-call arguments at the local MCP bridge boundary, and provides a live **🕶️ Blind LLM Context vs. Operator View** toggle in the Studio UI.
 - **Compartmentalized Asymmetric `ES256` JWT + HMAC-SHA256 Signing (`./security/auth_guard.py`, `./security/authenticated_mcp_runner.py`)**:
   - Backends receive **only** `ISSUER_PUBLIC_KEY_PEM` (zero shared JWT secrets) plus their own isolated HMAC secret.
   - `authenticated_mcp_runner.py` wraps unmodified `synapse_auto_server.py` explicitly (no hidden `sitecustomize.py` hooks), attaching `Authorization: Bearer <ES256_JWT>`, `X-Request-Timestamp` (±60s), `X-Request-Nonce`, and `X-Request-Signature` (`HMAC-SHA256`).

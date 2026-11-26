@@ -173,6 +173,7 @@ async def security_and_session_auth_middleware(request: Request, call_next):
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=2, max_length=1000)
+    bla_enabled: bool = Field(default=True)
 
 
 async def _get_http_client() -> httpx.AsyncClient:
@@ -380,7 +381,7 @@ async def ask_copilot(req: AskRequest) -> Dict[str, Any]:
     async with _mutation_lock:
         await manager.ensure_running_async()
         try:
-            return await copilot.ask(req.question, shared_bridge=mcp_pool)
+            return await copilot.ask(req.question, shared_bridge=mcp_pool, bla_enabled=req.bla_enabled)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

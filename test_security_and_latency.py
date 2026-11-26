@@ -15,6 +15,7 @@ from copilot.service_manager import (
     create_verified_ssl_context,
 )
 from dashboard.server import app
+from security.blind_llm_guard import BlindLLMVault
 
 
 def run_all_checks() -> None:
@@ -176,7 +177,46 @@ def run_all_checks() -> None:
             f"[PASS] Suite 6: MCP transport={ask1['mcp_transport_latency_ms']}ms (LLM=0.0ms), live --discover & ERP idempotency ({assertions_passed} cumulative)"
         )
 
-    print(f"\nSUMMARY: {assertions_passed}/{assertions_passed} assertions passed across 6 verification suites (0 failures).")
+        # Suite 7: Blind LLM Agent (BLA) Cryptographic Tokenization & Zero-PII Verification (6 assertions)
+        vault = BlindLLMVault()
+        erp_blinded = vault.blind_payload({"customer_name": "Apex BioLabs Pvt Ltd", "order_id": "ORD-7801"})
+        crm_blinded = vault.blind_payload({"customer_name": "Apex BioLabs Pvt Ltd", "assigned_to": "Priya Nair"})
+        check(
+            erp_blinded["customer_name"].startswith("[ORG_BLIND_")
+            and erp_blinded["customer_name"] == crm_blinded["customer_name"],
+            "BLA must produce deterministic cross-system tokens for joins",
+        )
+        check(
+            crm_blinded["assigned_to"].startswith("[STAFF_BLIND_"),
+            "BLA must blind staff identities",
+        )
+        scrubbed = vault.blind_text("Email ops@apexbiolabs.in or call +91-984-501-2233 regarding Apex BioLabs Pvt Ltd")
+        check(
+            "ops@apexbiolabs.in" not in scrubbed
+            and "984-501-2233" not in scrubbed
+            and "Apex BioLabs Pvt Ltd" not in scrubbed,
+            f"BLA text scrubber leaked raw PII: {scrubbed}",
+        )
+        unblinded_args = vault.unblind_payload({"customer_name": erp_blinded["customer_name"]})
+        check(
+            unblinded_args["customer_name"] == "Apex BioLabs Pvt Ltd",
+            "BLA writeback unblinding failed to restore original organization name",
+        )
+        check(
+            ask1["bla"]["bla_enabled"] is True
+            and ask1["bla"]["zero_raw_pii_in_blind_view"] is True
+            and "Apex BioLabs" not in ask1["blind_answer"]
+            and "Vanguard Robotics" not in ask1["blind_answer"]
+            and "[ORG_BLIND_" in ask1["blind_answer"],
+            "Live /api/ask blind_answer leaked customer names",
+        )
+        check(
+            "Apex BioLabs Pvt Ltd" in ask1["answer"] and "[ORG_BLIND_" not in ask1["answer"],
+            "Operator unblinded view failed to restore readable names",
+        )
+        print(f"[PASS] Suite 7: Blind LLM Agent (BLA) zero-PII tokenization, cross-system join & writeback unblinding ({assertions_passed} cumulative)")
+
+    print(f"\nSUMMARY: {assertions_passed}/{assertions_passed} assertions passed across 7 verification suites (0 failures).")
 
 
 if __name__ == "__main__":
