@@ -143,7 +143,7 @@ SUMMARY: 32/32 assertions passed across 7 verification suites (0 failures).
 # 3. Run Automated CLI Judge Demo (Prompts 1-2 + Before/After Live `synapse build --discover`)
 .\.venv\Scripts\python.exe .\run_demo.py
 
-# 4. Run 26-Assertion Security, Loophole & Latency Verification Suite
+# 4. Run 32-Assertion Security, BLA, Loophole & Latency Verification Suite
 .\.venv\Scripts\python.exe .\test_security_and_latency.py
 ```
 
