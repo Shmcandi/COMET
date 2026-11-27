@@ -134,9 +134,9 @@ SUMMARY: 33/33 assertions passed across 7 verification suites (0 failures).
 
 ## 7. Quickstart & Run Commands
 
-*(Commands below show Windows PowerShell paths; on **macOS / Linux**, substitute `./.venv/bin/python` for `.\.venv\Scripts\python.exe`.)*
-
 ```powershell
+# On macOS / Linux, replace .\.venv\Scripts\python.exe with ./.venv/bin/python
+
 # 1. Start Interactive Web Studio (Loopback HTTP UI on :8100 + TLS 1.3 Backends on :8101/:8102)
 .\.venv\Scripts\python.exe .\start_studio.py
 
