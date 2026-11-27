@@ -334,14 +334,18 @@ def run_all_checks() -> None:
             failed_closed = exc.status_code == 503
         check(failed_closed, "Misconfigured FalseAuthRecognitionGuard must fail closed with 503")
 
-        # 8.7 Strict CSP (`script-src 'self'` without 'unsafe-inline') and external /static/app.js
+        # 8.7 Strict CSP (`script-src 'self'` without 'unsafe-inline') and external /static/styles.css + /static/app.js
         csp_header = r_index.headers.get("content-security-policy", "")
         r_js = client.get("/static/app.js")
+        r_css = client.get("/static/styles.css")
         check(
             "script-src 'self'" in csp_header
             and "script-src 'self' 'unsafe-inline'" not in csp_header
-            and r_js.status_code == 200,
-            f"Strict CSP or /static/app.js check failed: csp={csp_header!r}, js={r_js.status_code}",
+            and r_js.status_code == 200
+            and r_css.status_code == 200
+            and "onclick=" not in r_index.text.lower()
+            and "onchange=" not in r_index.text.lower(),
+            f"Strict CSP or static bundle check failed: csp={csp_header!r}, js={r_js.status_code}, css={r_css.status_code}",
         )
         print(f"[PASS] Suite 8: White-box red-team patches (body/query HMAC, anti-DoS, CSRF, BLA lock, alias vault, strict CSP) ({assertions_passed} cumulative)")
 

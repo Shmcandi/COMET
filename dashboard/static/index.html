@@ -3,381 +3,293 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COMET × Synapse — Privacy-Preserving Blind LLM Agent Copilot</title>
-  <style>
-    :root {
-      --bg: #090d16;
-      --panel: #111827;
-      --panel-2: #172033;
-      --border: #26334d;
-      --text: #e6edf7;
-      --muted: #93a4c3;
-      --cyan: #38bdf8;
-      --amber: #f59e0b;
-      --emerald: #10b981;
-      --rose: #f43f5e;
-      --violet: #a78bfa;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: radial-gradient(circle at top right, #16223b 0%, var(--bg) 55%);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    header {
-      padding: 18px 28px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(9, 13, 22, 0.85);
-      backdrop-filter: blur(10px);
-      position: sticky;
-      top: 0;
-      z-index: 20;
-    }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .logo-pill {
-      background: linear-gradient(135deg, #10b981, #38bdf8);
-      color: #06101f;
-      font-weight: 800;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 12.5px;
-      letter-spacing: 0.04em;
-    }
-    .title h1 { margin: 0; font-size: 18px; font-weight: 700; }
-    .title p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
-    .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    button {
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--panel-2);
-      color: var(--text);
-      padding: 9px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.16s ease;
-    }
-    button:hover { border-color: var(--cyan); transform: translateY(-1px); }
-    button:disabled { opacity: 0.55; cursor: wait; transform: none; }
-    .btn-live {
-      background: linear-gradient(135deg, #f59e0b, #ea580c);
-      color: #fff;
-      border: none;
-      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.28);
-    }
-    .btn-live.active {
-      background: linear-gradient(135deg, #059669, #10b981);
-      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.28);
-    }
-    .btn-shield {
-      background: rgba(244, 63, 94, 0.14);
-      border-color: rgba(244, 63, 94, 0.45);
-      color: #fda4af;
-    }
-    .btn-bla {
-      border-color: rgba(167, 139, 250, 0.5);
-      color: #ddd6fe;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #0284c7, #4f46e5);
-      border: none;
-      color: #fff;
-      padding: 11px 20px;
-    }
-    main {
-      max-width: 1460px;
-      margin: 0 auto;
-      padding: 22px 28px 48px;
-      display: grid;
-      grid-template-columns: 400px 1fr;
-      gap: 22px;
-    }
-    .card {
-      background: rgba(17, 24, 39, 0.92);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 18px;
-    }
-    .card h2 {
-      margin: 0 0 12px;
-      font-size: 13.5px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .sys-badge {
-      padding: 3px 9px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .sys-orders { background: rgba(56, 189, 248, 0.14); color: var(--cyan); border: 1px solid rgba(56, 189, 248, 0.35); }
-    .sys-support { background: rgba(167, 139, 250, 0.14); color: var(--violet); border: 1px solid rgba(167, 139, 250, 0.35); }
-    .sys-tls { background: rgba(16, 185, 129, 0.14); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
-    .sys-alert { background: rgba(244, 63, 94, 0.16); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.4); }
-    .tool-chip {
-      display: inline-block;
-      margin: 3px 4px 3px 0;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-family: 'JetBrains Mono', Consolas, monospace;
-      font-size: 11.5px;
-      background: #0d1321;
-      border: 1px solid var(--border);
-    }
-    .tool-chip.new-tool {
-      border-color: var(--emerald);
-      color: #6ee7b7;
-      background: rgba(16, 185, 129, 0.12);
-    }
-    .scenario-btn {
-      width: 100%;
-      text-align: left;
-      margin-bottom: 9px;
-      padding: 11px 13px;
-      background: #0d1424;
-      border-radius: 10px;
-      line-height: 1.4;
-    }
-    .scenario-btn small {
-      display: block;
-      color: var(--cyan);
-      font-size: 11px;
-      margin-bottom: 3px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .query-box { display: flex; gap: 10px; margin-bottom: 18px; }
-    .query-box input {
-      flex: 1;
-      background: #0b111e;
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 12px 15px;
-      border-radius: 10px;
-      font-size: 14px;
-    }
-    .answer-body { line-height: 1.6; font-size: 14px; }
-    .answer-body h3 { margin-top: 4px; color: #f8fafc; }
-    .answer-body h4 { margin: 16px 0 6px; color: var(--cyan); }
-    .answer-body code {
-      background: #0b111e;
-      padding: 2px 6px;
-      border-radius: 5px;
-      font-family: Consolas, monospace;
-      font-size: 12.5px;
-      color: #7dd3fc;
-    }
-    .answer-body table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 12px 0;
-      font-size: 13px;
-    }
-    .answer-body th, .answer-body td {
-      border: 1px solid var(--border);
-      padding: 8px 10px;
-      text-align: left;
-    }
-    .answer-body th { background: #0d1424; color: var(--muted); }
-    .trace-item {
-      border: 1px solid var(--border);
-      background: #0c1220;
-      border-radius: 10px;
-      padding: 10px 13px;
-      margin-bottom: 9px;
-      font-size: 12.5px;
-    }
-    .trace-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .terminal {
-      background: #050811;
-      border: 1px solid #1e293b;
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-family: Consolas, monospace;
-      font-size: 12px;
-      color: #a7f3d0;
-      white-space: pre-wrap;
-      max-height: 240px;
-      overflow-y: auto;
-    }
-    .meta-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; font-size: 12px; }
-    .pill {
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #0c1322;
-      border: 1px solid var(--border);
-      color: var(--muted);
-    }
-    .pill.ok { color: #6ee7b7; border-color: rgba(16, 185, 129, 0.4); }
-    .pill.fast { color: #7dd3fc; border-color: rgba(56, 189, 248, 0.4); }
-    .sec-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 8px;
-      font-size: 12px;
-    }
-    .sec-stat {
-      background: #0b111f;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 10px;
-    }
-    .sec-stat strong { display: block; font-size: 16px; margin-top: 2px; }
-    .event-row {
-      background: #0b101d;
-      border-left: 3px solid var(--rose);
-      padding: 7px 10px;
-      margin-top: 7px;
-      border-radius: 6px;
-      font-size: 11.5px;
-    }
-  </style>
+  <title>COMET × Synapse — Operational Command Center</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <span class="logo-pill">TLS 1.3 · BLA · ES256</span>
-      <div class="title">
-        <h1>COMET — Blind LLM Agent (BLA) Copilot</h1>
-        <p>2nd Brain Labs × Geek Room Vibe-a-thon · Privacy-Preserving Blind LLM Agents over Synapse MCP</p>
-      </div>
-    </div>
-    <div class="actions">
-      <button id="btnBlaToggle" class="btn-bla">View: Operator (Unblinded)</button>
-      <button id="btnShield" class="btn-shield">Simulate False-Auth Attacks</button>
-      <button id="btnLiveDiscover" class="btn-live">Live Add Endpoint + synapse build --discover</button>
-      <button id="btnReset">Reset Demo Baseline</button>
-    </div>
-  </header>
-
-  <main>
-    <section>
-      <div class="card">
-        <h2>
-          <span>Compartmentalized Security &amp; TLS Shield</span>
-          <span class="sys-badge sys-tls" id="tlsCipherBadge">TLS 1.3 Active</span>
-        </h2>
-        <div style="font-size:11.5px;color:var(--muted);line-height:1.45;" id="tlsSummaryText">
-          Verifying X.509 Root CA &amp; audience-scoped ES256+HMAC channels...
+  <div class="app-shell">
+    <!-- Top Command Bar (56px Fixed) -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand-mark">
+          <span class="brand-glyph" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M8 1.5L14 5v6l-6 3.5L2 11V5l6-3.5z" />
+              <path d="M8 8l6-3M8 8v6.5M8 8L2 5" />
+            </svg>
+          </span>
+          <span class="brand-title">COMET <span>×</span> Synapse</span>
         </div>
-        <div class="sec-grid">
-          <div class="sec-stat">
-            <span style="color:var(--muted);">Verified E2E Calls</span>
-            <strong style="color:#6ee7b7;" id="authOkCount">0</strong>
+        <span class="track-pill">TRACK 03 · CROSS-SYSTEM MCP</span>
+      </div>
+
+      <div class="topbar-center">
+        <div class="telemetry-pill" title="SupplyPulse ERP backend over CA-pinned TLS 1.3 + ES256 JWT + Body HMAC">
+          <span class="pulse-dot"></span>
+          <span class="telemetry-name erp">SupplyPulse</span>
+          <span class="telemetry-port">:8101</span>
+          <span class="micro-tag" id="erpTlsTag">TLS 1.3 · ES256</span>
+        </div>
+
+        <div class="telemetry-pill" title="CareDesk CRM backend over CA-pinned TLS 1.3 + ES256 JWT + Body HMAC">
+          <span class="pulse-dot"></span>
+          <span class="telemetry-name crm">CareDesk</span>
+          <span class="telemetry-port">:8102</span>
+          <span class="micro-tag" id="crmTlsTag">TLS 1.3 · ES256</span>
+        </div>
+
+        <div class="telemetry-pill" title="Last query warm MCP stdio + HTTPS transport latency">
+          <span class="latency-readout" id="topLatencyBadge">MCP <strong>-- ms</strong></span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="segmented-control" role="group" aria-label="Context privacy mode">
+          <button type="button" id="segOperatorBtn" class="seg-btn active-operator">
+            Operator View
+          </button>
+          <button type="button" id="segBlaBtn" class="seg-btn">
+            Blind LLM Context (BLA)
+          </button>
+        </div>
+
+        <button type="button" id="btnAuditAuth" class="btn-ghost" title="Run 5 live false-auth, replay, and body-tampering intrusion probes">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M8 1.5l5.5 2.2v4.1c0 3.4-2.3 5.7-5.5 6.7-3.2-1-5.5-3.3-5.5-6.7V3.7L8 1.5z" />
+          </svg>
+          <span id="btnAuditAuthLabel">Audit Guard</span>
+        </button>
+
+        <button type="button" id="btnResetState" class="btn-ghost" title="Reset ERP/CRM state and restore 5-tool baseline">
+          Reset State
+        </button>
+
+        <button type="button" id="btnToggleTrace" class="btn-ghost btn-icon" title="Toggle Live MCP Trace Inspector" aria-label="Toggle Live MCP Trace Inspector">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <rect x="2" y="2.5" width="12" height="11" rx="1.5" />
+            <path d="M10 2.5v11" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 3-Pane Operational Shell -->
+    <div class="workspace-body">
+      <!-- Left Rail (290px) -->
+      <aside class="left-rail">
+        <div class="rail-scroll">
+          <div class="section-label">
+            <span>Workflow Scenarios</span>
+            <span>4 Presets</span>
           </div>
-          <div class="sec-stat">
-            <span style="color:var(--muted);">False-Auth Blocked</span>
-            <strong style="color:#fda4af;" id="authBlockedCount">0</strong>
+
+          <div class="scenario-list">
+            <button
+              type="button"
+              class="scenario-card"
+              data-scenario="1"
+              data-prompt="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?"
+            >
+              <div class="scenario-card-top">
+                <span class="scenario-tag tag-erp">Blast Radius</span>
+                <span class="scenario-id">SHP-402</span>
+              </div>
+              <div class="scenario-title">Delayed Freight × Ticket Coverage</div>
+              <div class="scenario-desc">Correlate 54h customs hold with P1 SLA countdowns and silent VIP risk.</div>
+            </button>
+
+            <button
+              type="button"
+              class="scenario-card"
+              data-scenario="2"
+              data-prompt="Check all open P1 support tickets, inspect their linked orders, and verify if replacement warehouse inventory is in stock."
+            >
+              <div class="scenario-card-top">
+                <span class="scenario-tag tag-crit">P1 × Stock</span>
+                <span class="scenario-id">TCK-901..903</span>
+              </div>
+              <div class="scenario-title">P1 SLA Escalations × Hub Stock</div>
+              <div class="scenario-desc">Cross-check active P1 tickets against nearest regional hub inventory.</div>
+            </button>
+
+            <button
+              type="button"
+              class="scenario-card"
+              data-scenario="3"
+              data-prompt="Find delayed shipments where Enterprise customers have no ticket yet, and open proactive support alerts."
+            >
+              <div class="scenario-card-top">
+                <span class="scenario-tag tag-crm">Proactive Writeback</span>
+                <span class="scenario-id">POST /tickets</span>
+              </div>
+              <div class="scenario-title">Silent VIP Churn Rescue</div>
+              <div class="scenario-desc">Detect uncovered Enterprise delays in ERP and open idempotent P1 alerts.</div>
+            </button>
+
+            <button
+              type="button"
+              class="scenario-card"
+              data-scenario="4"
+              data-prompt="Expedite and reroute delayed shipment SHP-402 via air freight and update affected CareDesk support tickets."
+            >
+              <div class="scenario-card-top">
+                <span class="scenario-tag tag-bla">Live Reroute</span>
+                <span class="scenario-id">--discover</span>
+              </div>
+              <div class="scenario-title">Air-Freight Reroute &amp; CRM Sync</div>
+              <div class="scenario-desc">Verify capability gap before rebuild and immediate execution after discovery.</div>
+            </button>
+          </div>
+
+          <div class="section-label">
+            <span>Selective MCP Surface</span>
+            <span id="totalToolsLabel">12 Tools</span>
+          </div>
+
+          <div class="surface-box">
+            <div class="surface-row-head">
+              <span style="color: var(--erp);">SupplyPulse ERP</span>
+              <span class="scenario-id" id="railOrdersCount">5 tools</span>
+            </div>
+            <div class="tool-chip-wrap" id="railOrdersTools"></div>
+          </div>
+
+          <div class="surface-box">
+            <div class="surface-row-head">
+              <span style="color: var(--crm);">CareDesk CRM</span>
+              <span class="scenario-id" id="railSupportCount">7 tools</span>
+            </div>
+            <div class="tool-chip-wrap" id="railSupportTools"></div>
           </div>
         </div>
-        <div id="falseAuthEventsBox" style="margin-top:8px;"></div>
-      </div>
 
-      <div class="card">
-        <h2>
-          <span>Blind LLM Agent (BLA) Vault</span>
-          <span class="sys-badge sys-support" id="blaBadge">Enforced</span>
-        </h2>
-        <div style="font-size:11.5px;color:var(--muted);line-height:1.45;" id="blaSummaryText">
-          Case-insensitively pseudonymizes customer &amp; staff identities (<code>[ORG_BLIND_XXXXXX]</code>, <code>[STAFF_BLIND_XXXXXX]</code>) across prompts &amp; tool outputs; unifies aliases &amp; unblinds locally.
+        <!-- Pinned Bottom Live `synapse build --discover` Control Card -->
+        <div class="discover-dock">
+          <div class="discover-panel" id="discoverPanel">
+            <div class="discover-head">
+              <span class="discover-title">synapse build --discover</span>
+              <span class="discover-count-badge" id="discoverToolTransition">5 tools</span>
+            </div>
+            <div class="discover-sub" id="discoverStatusSub">
+              Hot-add <code>POST /expedite-reroute</code> and rebuild SupplyPulse MCP without downtime.
+            </div>
+            <div class="discover-stepper">
+              <div class="step-row" id="stepRoute">
+                <span class="step-dot"></span>
+                <span>1. Mount FastAPI reroute endpoint</span>
+              </div>
+              <div class="step-row" id="stepBuild">
+                <span class="step-dot"></span>
+                <span>2. Run synapse build --discover</span>
+              </div>
+              <div class="step-row" id="stepReload">
+                <span class="step-dot"></span>
+                <span>3. Hot-reload stdio MCP worker</span>
+              </div>
+            </div>
+            <button type="button" id="btnRunDiscover" class="btn-discover-primary">
+              Run Live Discovery
+            </button>
+          </div>
         </div>
-        <div id="blaTokensBox" style="margin-top:8px;"></div>
-      </div>
+      </aside>
 
-      <div class="card">
-        <h2>
-          <span>System 1 · SupplyPulse ERP</span>
-          <span class="sys-badge sys-orders" id="ordersCount">5 MCP Tools</span>
-        </h2>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
-          <code>https://127.0.0.1:8101</code> (TLS + ES256 + Body HMAC) → <code>synapse_auto_server.py</code>
-        </div>
-        <div id="ordersTools"></div>
-      </div>
-
-      <div class="card">
-        <h2>
-          <span>System 2 · CareDesk CRM</span>
-          <span class="sys-badge sys-support" id="supportCount">7 MCP Tools</span>
-        </h2>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
-          <code>https://127.0.0.1:8102</code> (TLS + ES256 + Body HMAC) → <code>synapse_auto_server.py</code>
-        </div>
-        <div id="supportTools"></div>
-      </div>
-
-      <div class="card">
-        <h2><span>Cross-System Judge Prompts</span></h2>
-        <button class="scenario-btn" data-prompt="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?">
-          <small>Prompt 1 · Cross-System Blast Radius</small>
-          Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?
-        </button>
-        <button class="scenario-btn" data-prompt="Check all open P1 support tickets, inspect their linked orders, and verify if replacement warehouse inventory is in stock.">
-          <small>Prompt 2 · P1 SLA × Warehouse Inventory</small>
-          Check all open P1 support tickets and verify if replacement warehouse inventory is in stock.
-        </button>
-        <button class="scenario-btn" data-prompt="Find delayed shipments where Enterprise customers have no ticket yet, and open proactive support alerts.">
-          <small>Prompt 3 · Proactive Cross-System Writeback</small>
-          Find delayed Enterprise orders with no ticket yet and open proactive CareDesk alerts.
-        </button>
-        <button class="scenario-btn" data-prompt="Expedite and reroute delayed shipment SHP-402 via air freight and update affected CareDesk support tickets.">
-          <small>Prompt 4 · Live Update Verification (--discover)</small>
-          Expedite and reroute SHP-402 via air freight and update affected CareDesk tickets.
-        </button>
-      </div>
-    </section>
-
-    <section>
-      <div class="card">
-        <div class="query-box">
-          <input id="questionInput" type="text" maxlength="1000" value="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?" />
-          <button id="askBtn" class="btn-primary">Ask Copilot →</button>
+      <!-- Center Copilot Workspace (Flex 1) -->
+      <main class="center-stage" id="centerStage">
+        <div class="bla-banner" id="blaBanner">
+          <div class="bla-banner-left">
+            <span class="bla-pill-solid">BLA ZERO-PII BOUNDARY</span>
+            <span>Viewing exact pseudonymized context exposed to the LLM. Real customer and staff names remain inside the local session vault.</span>
+          </div>
+          <span class="bla-banner-meta" id="blaBannerCount">Enforced · HMAC-SHA256</span>
         </div>
 
-        <div class="meta-strip" id="metaStrip" style="display:none;"></div>
-        <div class="answer-body" id="answerBox">
-          <p style="color:var(--muted);">Select a cross-system scenario on the left or click <strong>Simulate False-Auth Attacks</strong> above to test live intrusion recognition.</p>
+        <div class="briefing-scroll" id="briefingScroll">
+          <div class="briefing-container" id="briefingContainer">
+            <!-- Initial Operational Readiness State -->
+            <div class="empty-briefing" id="emptyBriefing">
+              <div class="empty-kicker">Cross-System Operations Copilot</div>
+              <h1 class="empty-title">SupplyPulse ERP + CareDesk CRM Connected via Synapse Auto MCP</h1>
+              <p class="empty-lead">
+                Select a workflow scenario in the left rail or enter an operational query below. Every tool call executes over CA-pinned TLS 1.3 with audience-scoped ES256 JWTs, full-body SHA-256 HMAC signatures, and server-enforced Blind LLM Agent (BLA) identity tokenization.
+              </p>
+              <div class="readiness-grid">
+                <div class="readiness-tile">
+                  <div class="tile-label">Transport &amp; Cipher</div>
+                  <div class="tile-val" id="tileTlsCipher">TLSv1.3</div>
+                  <div class="tile-sub" id="tileTlsDetail">Verifying Root CA &amp; ES256 channels</div>
+                </div>
+                <div class="readiness-tile">
+                  <div class="tile-label">Live Queue Snapshot</div>
+                  <div class="tile-val" id="tileQueueSummary">--</div>
+                  <div class="tile-sub">Delayed corridors × open CareDesk tickets</div>
+                </div>
+                <div class="readiness-tile">
+                  <div class="tile-label">Auth &amp; Intrusion Guard</div>
+                  <div class="tile-val" id="tileAuthStats">0 Verified · 0 Blocked</div>
+                  <div class="tile-sub">Public-key ES256 + anti-replay nonce guard</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="dynamicBriefingArea"></div>
+            <div id="auxPanelArea"></div>
+          </div>
         </div>
-      </div>
 
-      <div class="card" id="attackSimCard" style="display:none;">
-        <h2>
-          <span>Live False-Auth, Body-Tampering &amp; Lateral-Movement Simulation</span>
-          <span class="sys-badge sys-tls" id="attackSimBadge">5/5 Blocked</span>
-        </h2>
-        <div id="attackSimBody"></div>
-      </div>
-
-      <div class="card" id="discoverCard" style="display:none;">
-        <h2>
-          <span>Live <code>synapse build --discover</code> Output</span>
-          <span class="sys-badge sys-orders" id="discoverBadge">Rebuild Complete</span>
-        </h2>
-        <div class="terminal" id="discoverTerminal"></div>
-      </div>
-
-      <div class="card">
-        <h2>
-          <span>Encrypted MCP Stdio → HTTPS Tool-Call Trace</span>
-          <span id="traceSummary" style="font-size:12px;color:var(--muted);">0 calls</span>
-        </h2>
-        <div id="traceList">
-          <div style="color:var(--muted);font-size:13px;">Every tool invocation is signed with an audience-scoped ES256 JWT + full-body HMAC-SHA256 nonce and sent over CA-verified TLS 1.3.</div>
+        <!-- Pinned Command-Palette Style Composer -->
+        <div class="composer-dock">
+          <div class="composer-shell">
+            <span class="composer-prompt-icon" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M4 4.5L8.5 8 4 11.5M9.5 11.5h3" />
+              </svg>
+            </span>
+            <input
+              id="composerInput"
+              class="composer-input"
+              type="text"
+              maxlength="1000"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Ask across SupplyPulse ERP &amp; CareDesk CRM (Ctrl+K)..."
+              value="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?"
+            />
+            <span class="kbd-hint">Enter</span>
+            <button type="button" id="btnSubmitQuery" class="btn-run">
+              <span id="runSpinner" class="spinner" style="display: none;"></span>
+              <span id="runBtnText">Run Query</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
-  </main>
+      </main>
+
+      <!-- Right Live MCP Trace Inspector (380px, Collapsible) -->
+      <aside class="right-inspector" id="rightInspector">
+        <div class="inspector-header">
+          <div class="inspector-title">
+            <span>Live MCP Trace</span>
+          </div>
+          <span class="inspector-summary" id="traceHeaderMeta">0 RPCs · -- ms</span>
+        </div>
+
+        <div class="vault-strip" id="vaultStrip">
+          <div class="vault-strip-head">
+            <span>BLA SESSION VAULT TOKENS</span>
+            <span id="vaultCountLabel">0 mapped</span>
+          </div>
+          <div class="vault-chip-list" id="vaultChipList"></div>
+        </div>
+
+        <div class="trace-scroll" id="traceScroll">
+          <div class="trace-empty" id="traceEmptyState">
+            No MCP calls recorded in this view yet. Run any scenario to inspect per-call stdio JSON-RPC arguments, TLS 1.3 latency, and emerald <code>[ORG_BLIND_XXXXXX]</code> token boundaries.
+          </div>
+          <div class="waterfall-list" id="waterfallList" style="display: none;"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>
