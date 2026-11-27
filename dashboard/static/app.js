@@ -128,7 +128,7 @@ async function refreshStatus() {
   document.getElementById("ordersTools").innerHTML = data.orders_service.tools
     .map((t) => {
       const isNew = t.name === "expedite_reroute_shipment";
-      return `<span class="tool-chip ${isNew ? "new-tool" : ""}" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}${isNew ? " ★ NEW" : ""}</span>`;
+      return `<span class="tool-chip ${isNew ? "new-tool" : ""}" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}${isNew ? " [NEW]" : ""}</span>`;
     })
     .join("");
 
@@ -140,10 +140,10 @@ async function refreshStatus() {
   const btn = document.getElementById("btnLiveDiscover");
   if (data.live_endpoint_enabled) {
     btn.classList.add("active");
-    btn.textContent = "✓ Live Endpoint Active (expedite_reroute_shipment)";
+    btn.textContent = "Live Endpoint Active (expedite_reroute_shipment)";
   } else {
     btn.classList.remove("active");
-    btn.textContent = "⚡ Live Add Endpoint + synapse build --discover";
+    btn.textContent = "Live Add Endpoint + synapse build --discover";
   }
 }
 
@@ -151,10 +151,10 @@ function toggleBlindInspector() {
   showBlindLLMView = !showBlindLLMView;
   const btn = document.getElementById("btnBlaToggle");
   if (showBlindLLMView) {
-    btn.textContent = "🕶️ View: Blind LLM Context (Identity-Blinded)";
+    btn.textContent = "View: Blind LLM Context (Identity-Blinded)";
     btn.style.background = "rgba(167,139,250,0.22)";
   } else {
-    btn.textContent = "👤 View: Operator (Unblinded)";
+    btn.textContent = "View: Operator (Unblinded)";
     btn.style.background = "";
   }
   if (lastAskResponse) renderAskPayload(lastAskResponse);
@@ -164,14 +164,14 @@ function renderAskPayload(data) {
   const strip = document.getElementById("metaStrip");
   strip.style.display = "flex";
   const latencyLabel = data.llm_used
-    ? `⚡ MCP: ${escapeHtml(data.mcp_transport_latency_ms)} ms + LLM: ${escapeHtml(data.llm_inference_latency_ms)} ms`
-    : `⚡ MCP Transport: ${escapeHtml(data.mcp_transport_latency_ms)} ms (Rule-Based Orchestrator, 0 LLM ms)`;
+    ? `MCP: ${escapeHtml(data.mcp_transport_latency_ms)} ms + LLM: ${escapeHtml(data.llm_inference_latency_ms)} ms`
+    : `MCP Transport: ${escapeHtml(data.mcp_transport_latency_ms)} ms (Rule-Based Orchestrator, 0 LLM ms)`;
   const blaCount = data.bla ? data.bla.unique_entities_blinded : 0;
   strip.innerHTML = `
-    <span class="pill ok">🔒 TLS 1.3 + ES256 + Body HMAC</span>
-    <span class="pill ok">🕶️ BLA Enforced (${escapeHtml(blaCount)} Entities)</span>
+    <span class="pill ok">TLS 1.3 + ES256 + Body HMAC</span>
+    <span class="pill ok">BLA Enforced (${escapeHtml(blaCount)} Entities)</span>
     <span class="pill ${data.cross_system_verified ? "ok" : ""}">
-      ${data.cross_system_verified ? "✓ Cross-System Join (2 MCP Servers)" : "1 MCP Server Used"}
+      ${data.cross_system_verified ? "Cross-System Join (2 MCP Servers)" : "1 MCP Server Used"}
     </span>
     <span class="pill fast">${latencyLabel}</span>
   `;
@@ -203,7 +203,7 @@ function renderAskPayload(data) {
               <span class="sys-badge ${step.server.includes("orders") ? "sys-orders" : "sys-support"}">${escapeHtml(step.system_badge)}</span>
               <code style="margin-left:6px;color:#f8fafc;">${escapeHtml(step.tool)}(${escapeHtml(JSON.stringify(shownArgs))})</code>
             </span>
-            <span style="color:var(--muted);">${escapeHtml(step.latency_ms)} ms · 🕶️🔒</span>
+            <span style="color:var(--muted);">${escapeHtml(step.latency_ms)} ms · TLS + BLA</span>
           </summary>
           <pre style="margin:8px 0 0;font-size:11.5px;color:#cbd5e1;overflow-x:auto;">${escapeHtml(JSON.stringify(shownOut, null, 2))}</pre>
         </details>
@@ -226,7 +226,7 @@ async function simulateAttacks() {
     card.style.display = "block";
     const sims = data.simulations || [];
     document.getElementById("attackSimBadge").textContent = data.all_attacks_blocked
-      ? `✓ ${sims.length}/${sims.length} Attacks Recognized & Blocked`
+      ? `${sims.length}/${sims.length} Attacks Recognized & Blocked`
       : "Check Alert";
     document.getElementById("attackSimBody").innerHTML = sims
       .map(
@@ -246,7 +246,7 @@ async function simulateAttacks() {
     await refreshStatus();
   } finally {
     btn.disabled = false;
-    btn.textContent = "🛡️ Simulate False-Auth Attacks";
+    btn.textContent = "Simulate False-Auth Attacks";
   }
 }
 

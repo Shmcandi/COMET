@@ -318,9 +318,9 @@ class CometCopilot:
             hub_stock = inv.get("warehouses", {}).get(order["nearest_hub"], 0)
             needed_qty = order["items"][0]["quantity"]
             stock_badge = (
-                f"✅ {hub_stock} in `{order['nearest_hub']}` (covers {needed_qty})"
+                f"In stock: {hub_stock} in `{order['nearest_hub']}` (covers {needed_qty})"
                 if hub_stock >= needed_qty
-                else f"⚠️ Only {hub_stock}/{needed_qty} in `{order['nearest_hub']}`"
+                else f"Low stock: only {hub_stock}/{needed_qty} in `{order['nearest_hub']}`"
             )
 
             if tickets:
@@ -329,7 +329,7 @@ class CometCopilot:
                 if t["priority"] == "P1" and t["status"] == "open":
                     sla_risk_tickets.append((order, t))
             else:
-                tck_summary = "🚨 **None raised** *(Silent Risk)*"
+                tck_summary = "**None raised** *(Silent Risk)*"
                 if order["account_tier"] == "Enterprise":
                     silent_vip.append(order)
 
@@ -356,7 +356,7 @@ class CometCopilot:
             "### Key Cross-System Insights",
         ]
         if not sla_risk_tickets and not silent_vip:
-            lines.append("- ✅ All impacted Enterprise orders on this shipment currently have mitigated or tracked tickets.")
+            lines.append("- All impacted Enterprise orders on this shipment currently have mitigated or tracked tickets.")
         for order, t in sla_risk_tickets:
             lines.append(
                 f"1. **Immediate SLA Breach Warning (`{t['ticket_id']}`)**: **{order['customer_name']}** (${order['annual_contract_usd']:,} ARR) has an active **P1** ticket with only **`{t['sla_minutes_remaining']} mins`** left on SLA — and `{order['nearest_hub']}` holds backup stock ready for dispatch."
@@ -389,7 +389,7 @@ class CometCopilot:
         tck_line = (
             ", ".join(f"`{t['ticket_id']}` ({t['priority']} · `{t['status']}` · SLA `{t['sla_minutes_remaining']}m`)" for t in tickets)
             if tickets
-            else "🚨 **No CareDesk ticket filed**"
+            else "**No CareDesk ticket filed**"
         )
         return "\n".join(
             [
@@ -436,7 +436,7 @@ class CometCopilot:
         p_resp = await bridge.call_tool("get_tickets_by_priority", {"priority": priority}, trace_log)
         tickets = p_resp.get("tickets", [])
         if not tickets:
-            return f"### Open {priority} Escalation Triage\n- ✅ There are currently **0 open `{priority}` tickets** in `CareDesk CRM`."
+            return f"### Open {priority} Escalation Triage\n- There are currently **0 open `{priority}` tickets** in `CareDesk CRM`."
 
         async def _inspect_ticket(t: dict) -> Tuple[dict, dict, dict, dict]:
             order = await bridge.call_tool("get_order_by_id", {"order_id": t["order_id"]}, trace_log)
@@ -462,13 +462,13 @@ class CometCopilot:
 
             if hub_avail >= needed:
                 ready_count += 1
-                verdict = f"✅ **Fulfillable Now** ({hub_avail} units at `{hub}`)"
+                verdict = f"**Fulfillable Now** ({hub_avail} units at `{hub}`)"
             elif total_avail >= needed:
                 ready_count += 1
-                verdict = f"🟡 **Split-Hub Dispatch** ({total_avail} total across hubs)"
+                verdict = f"**Split-Hub Dispatch** ({total_avail} total across hubs)"
             else:
                 short_count += 1
-                verdict = f"❌ **Stock Shortage** (Need {needed}, only {total_avail} total; below reorder={inv['below_reorder_threshold']})"
+                verdict = f"**Stock Shortage** (Need {needed}, only {total_avail} total; below reorder={inv['below_reorder_threshold']})"
 
             rows.append(
                 f"| `{t['ticket_id']}` (`{t['sla_minutes_remaining']}m` SLA) | **{t['customer_name']}** | "
@@ -502,7 +502,7 @@ class CometCopilot:
             open_tcks = await bridge.call_tool("list_all_open_tickets", {}, trace_log)
             return (
                 "### Proactive Silent-Impact Rescue\n"
-                f"- ✅ **0 unmitigated delayed shipments** remain in `SupplyPulse ERP` "
+                f"- **0 unmitigated delayed shipments** remain in `SupplyPulse ERP` "
                 f"(`{open_tcks.get('count', 0)}` active tickets currently tracked in `CareDesk CRM`)."
             )
 
@@ -544,11 +544,11 @@ class CometCopilot:
 
         bullet_created = (
             [
-                f"- ✅ Created **`{t['ticket_id']}`** ({t['priority']}) for **{t['customer_name']}** (`{t['order_id']}`) — *{t['subject']}*"
+                f"- Created **`{t['ticket_id']}`** ({t['priority']}) for **{t['customer_name']}** (`{t['order_id']}`) — *{t['subject']}*"
                 for t in created_tickets
             ]
             if created_tickets
-            else ["- ℹ️ All impacted Enterprise customers already have active proactive or reactive CareDesk tickets."]
+            else ["- All impacted Enterprise customers already have active proactive or reactive CareDesk tickets."]
         )
 
         return "\n".join(
@@ -599,7 +599,7 @@ class CometCopilot:
                     "",
                     "- **Currently Exposed SupplyPulse MCP Tools**: "
                     + ", ".join(f"`{t['name']}`" for t in bridge.tools_catalog if "orders" in t["server"]),
-                    "- **Next Step (Track 3 Live Update)**: Add `POST /shipments/{shipment_id}/expedite-reroute` to `orders_logistics_service/app.py` and run **`synapse build --discover`** (or click **⚡ Live Add Endpoint + `synapse build --discover`** in the studio) — then ask me again!",
+                    "- **Next Step (Track 3 Live Update)**: Add `POST /shipments/{shipment_id}/expedite-reroute` to `orders_logistics_service/app.py` and run **`synapse build --discover`** (or click **Live Add Endpoint + `synapse build --discover`** in the studio) — then ask me again!",
                 ]
             )
 
@@ -644,7 +644,7 @@ class CometCopilot:
 
         return "\n".join(
             [
-                f"### ⚡ Live-Discovered Tool Executed: `{shipment_id}` Rerouted & CareDesk Synced!{idempotent_note}",
+                f"### Live-Discovered Tool Executed: `{shipment_id}` Rerouted & CareDesk Synced!{idempotent_note}",
                 "Using the newly discovered **`expedite_reroute_shipment`** MCP tool (added via `synapse build --discover`), I executed the end-to-end recovery across both systems:",
                 "",
                 "#### 1. SupplyPulse ERP — Air-Freight Reroute Confirmed",
@@ -677,7 +677,7 @@ class CometCopilot:
         ticket_by_order = {t["order_id"]: t for t in open_tickets.get("tickets", [])}
         shipments = delayed.get("shipments", [])
         if not shipments:
-            return "### Global Cross-System Delayed Corridor Matrix\n- ✅ All freight shipments are currently on schedule or mitigated via express air-reroute."
+            return "### Global Cross-System Delayed Corridor Matrix\n- All freight shipments are currently on schedule or mitigated via express air-reroute."
 
         orders_lists = await asyncio.gather(
             *[bridge.call_tool("get_orders_by_shipment", {"shipment_id": s["shipment_id"]}, trace_log) for s in shipments]
@@ -686,7 +686,7 @@ class CometCopilot:
         for shp, orders_resp in zip(shipments, orders_lists):
             for o in orders_resp.get("orders", []):
                 t = ticket_by_order.get(o["order_id"])
-                t_text = f"`{t['ticket_id']}` ({t['priority']}, {t['sla_minutes_remaining']}m SLA)" if t else "🚨 No Ticket Yet"
+                t_text = f"`{t['ticket_id']}` ({t['priority']}, {t['sla_minutes_remaining']}m SLA)" if t else "No Ticket Yet"
                 rows.append(
                     f"| `{shp['shipment_id']}` ({shp['delay_hours']}h) | `{o['order_id']}` | **{o['customer_name']}** ({o['account_tier']}) | ${o['order_total_usd']:,} | {t_text} |"
                 )

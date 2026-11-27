@@ -13,7 +13,7 @@ if __name__ == "__main__":
     use_https = "--https" in sys.argv
     if use_https:
         _, cert_path, key_path = ensure_tls_certificates()
-        print("\n  ✦ COMET × Synapse Studio (Full HTTPS) running at: https://127.0.0.1:8100\n")
+        print("\n  COMET × Synapse Studio (Full HTTPS) running at: https://127.0.0.1:8100\n")
         uvicorn.run(
             "dashboard.server:app",
             host="127.0.0.1",
@@ -23,5 +23,5 @@ if __name__ == "__main__":
             reload=False,
         )
     else:
-        print("\n  ✦ COMET × Synapse Studio running at: http://127.0.0.1:8100 (Backends on TLS 1.3 :8101/:8102)\n")
+        print("\n  COMET × Synapse Studio running at: http://127.0.0.1:8100 (Backends on TLS 1.3 :8101/:8102)\n")
         uvicorn.run("dashboard.server:app", host="127.0.0.1", port=8100, reload=False)
