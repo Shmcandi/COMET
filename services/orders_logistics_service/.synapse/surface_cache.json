@@ -7,7 +7,7 @@
   "captured_functions": false,
   "files": {
     "app.py": {
-      "sha": "fb98d58acfa2f8f5eca6a18a8d376d13565a5f0d95313377879fea2902528639",
+      "sha": "018663edef9a1900fc5589155d1097f428e3c934964d0e44b642881c169dcee8",
       "endpoints": [
         {
           "method": "GET",
@@ -118,5 +118,5 @@
     }
   },
   "lines_scanned": 326,
-  "updated_at": 1795777430059
+  "updated_at": 1795779397456
 }

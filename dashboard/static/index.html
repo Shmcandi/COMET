@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COMET × Synapse — End-to-End TLS &amp; Zero-Trust MCP Copilot</title>
+  <title>COMET × Synapse — Privacy-Preserving Blind LLM Agent Copilot</title>
   <style>
     :root {
       --bg: #090d16;
@@ -78,6 +78,10 @@
       background: rgba(244, 63, 94, 0.14);
       border-color: rgba(244, 63, 94, 0.45);
       color: #fda4af;
+    }
+    .btn-bla {
+      border-color: rgba(167, 139, 250, 0.5);
+      color: #ddd6fe;
     }
     .btn-primary {
       background: linear-gradient(135deg, #0284c7, #4f46e5);
@@ -250,16 +254,10 @@
       </div>
     </div>
     <div class="actions">
-      <button id="btnBlaToggle" onclick="toggleBlindInspector()" style="border-color:rgba(167,139,250,0.5);color:#ddd6fe;">
-        🕶️ View: Operator (Unblinded)
-      </button>
-      <button id="btnShield" class="btn-shield" onclick="simulateAttacks()">
-        🛡️ Simulate False-Auth Attacks
-      </button>
-      <button id="btnLiveDiscover" class="btn-live" onclick="triggerLiveDiscover()">
-        ⚡ Live Add Endpoint + synapse build --discover
-      </button>
-      <button id="btnReset" onclick="resetDemo()">↺ Reset Demo Baseline</button>
+      <button id="btnBlaToggle" class="btn-bla">👤 View: Operator (Unblinded)</button>
+      <button id="btnShield" class="btn-shield">🛡️ Simulate False-Auth Attacks</button>
+      <button id="btnLiveDiscover" class="btn-live">⚡ Live Add Endpoint + synapse build --discover</button>
+      <button id="btnReset">↺ Reset Demo Baseline</button>
     </div>
   </header>
 
@@ -271,7 +269,7 @@
           <span class="sys-badge sys-tls" id="tlsCipherBadge">TLS 1.3 Active</span>
         </h2>
         <div style="font-size:11.5px;color:var(--muted);line-height:1.45;" id="tlsSummaryText">
-          Verifying X.509 Root CA &amp; audience-scoped JWT+HMAC channels...
+          Verifying X.509 Root CA &amp; audience-scoped ES256+HMAC channels...
         </div>
         <div class="sec-grid">
           <div class="sec-stat">
@@ -289,10 +287,10 @@
       <div class="card">
         <h2>
           <span>🕶️ Blind LLM Agent (BLA) Vault</span>
-          <span class="sys-badge sys-support" id="blaBadge">Zero-PII Ready</span>
+          <span class="sys-badge sys-support" id="blaBadge">Enforced</span>
         </h2>
         <div style="font-size:11.5px;color:var(--muted);line-height:1.45;" id="blaSummaryText">
-          Pseudonymizes customer &amp; staff identities (<code>[ORG_BLIND_*]</code>, <code>[STAFF_BLIND_*]</code>) via keyed HMAC before tool outputs enter LLM context; unblinds locally for operators &amp; writebacks.
+          Case-insensitively pseudonymizes customer &amp; staff identities (<code>[ORG_BLIND_XXXXXX]</code>, <code>[STAFF_BLIND_XXXXXX]</code>) across prompts &amp; tool outputs; unifies aliases &amp; unblinds locally.
         </div>
         <div id="blaTokensBox" style="margin-top:8px;"></div>
       </div>
@@ -303,7 +301,7 @@
           <span class="sys-badge sys-orders" id="ordersCount">5 MCP Tools</span>
         </h2>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
-          <code>https://127.0.0.1:8101</code> (TLS + Scoped JWT) → <code>synapse_auto_server.py</code>
+          <code>https://127.0.0.1:8101</code> (TLS + ES256 + Body HMAC) → <code>synapse_auto_server.py</code>
         </div>
         <div id="ordersTools"></div>
       </div>
@@ -314,26 +312,26 @@
           <span class="sys-badge sys-support" id="supportCount">7 MCP Tools</span>
         </h2>
         <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">
-          <code>https://127.0.0.1:8102</code> (TLS + Scoped JWT) → <code>synapse_auto_server.py</code>
+          <code>https://127.0.0.1:8102</code> (TLS + ES256 + Body HMAC) → <code>synapse_auto_server.py</code>
         </div>
         <div id="supportTools"></div>
       </div>
 
       <div class="card">
         <h2><span>Cross-System Judge Prompts</span></h2>
-        <button class="scenario-btn" onclick="runPrompt('Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?')">
+        <button class="scenario-btn" data-prompt="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?">
           <small>Prompt 1 · Cross-System Blast Radius</small>
           Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?
         </button>
-        <button class="scenario-btn" onclick="runPrompt('Check all open P1 support tickets, inspect their linked orders, and verify if replacement warehouse inventory is in stock.')">
+        <button class="scenario-btn" data-prompt="Check all open P1 support tickets, inspect their linked orders, and verify if replacement warehouse inventory is in stock.">
           <small>Prompt 2 · P1 SLA × Warehouse Inventory</small>
           Check all open P1 support tickets and verify if replacement warehouse inventory is in stock.
         </button>
-        <button class="scenario-btn" onclick="runPrompt('Find delayed shipments where Enterprise customers have no ticket yet, and open proactive support alerts.')">
+        <button class="scenario-btn" data-prompt="Find delayed shipments where Enterprise customers have no ticket yet, and open proactive support alerts.">
           <small>Prompt 3 · Proactive Cross-System Writeback</small>
           Find delayed Enterprise orders with no ticket yet and open proactive CareDesk alerts.
         </button>
-        <button class="scenario-btn" onclick="runPrompt('Expedite and reroute delayed shipment SHP-402 via air freight and update affected CareDesk support tickets.')">
+        <button class="scenario-btn" data-prompt="Expedite and reroute delayed shipment SHP-402 via air freight and update affected CareDesk support tickets.">
           <small>Prompt 4 · Live Update Verification (--discover)</small>
           Expedite and reroute SHP-402 via air freight and update affected CareDesk tickets.
         </button>
@@ -343,8 +341,8 @@
     <section>
       <div class="card">
         <div class="query-box">
-          <input id="questionInput" type="text" maxlength="1000" value="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?" onkeydown="if(event.key==='Enter') submitQuestion()" />
-          <button id="askBtn" class="btn-primary" onclick="submitQuestion()">Ask Copilot →</button>
+          <input id="questionInput" type="text" maxlength="1000" value="Which customers are affected by delayed shipment SHP-402, and have they raised a support ticket?" />
+          <button id="askBtn" class="btn-primary">Ask Copilot →</button>
         </div>
 
         <div class="meta-strip" id="metaStrip" style="display:none;"></div>
@@ -355,8 +353,8 @@
 
       <div class="card" id="attackSimCard" style="display:none;">
         <h2>
-          <span>Live False-Auth &amp; Lateral-Movement Simulation Results</span>
-          <span class="sys-badge sys-tls" id="attackSimBadge">4/4 Blocked</span>
+          <span>Live False-Auth, Body-Tampering &amp; Lateral-Movement Simulation</span>
+          <span class="sys-badge sys-tls" id="attackSimBadge">5/5 Blocked</span>
         </h2>
         <div id="attackSimBody"></div>
       </div>
@@ -375,291 +373,12 @@
           <span id="traceSummary" style="font-size:12px;color:var(--muted);">0 calls</span>
         </h2>
         <div id="traceList">
-          <div style="color:var(--muted);font-size:13px;">Every tool invocation is signed with an audience-scoped JWT + HMAC-SHA256 nonce and sent over CA-verified TLS 1.3.</div>
+          <div style="color:var(--muted);font-size:13px;">Every tool invocation is signed with an audience-scoped ES256 JWT + full-body HMAC-SHA256 nonce and sent over CA-verified TLS 1.3.</div>
         </div>
       </div>
     </section>
   </main>
 
-  <script>
-    function escapeHtml(val) {
-      return String(val ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    function renderMarkdown(md) {
-      const lines = String(md ?? '').split('\n');
-      let html = '';
-      let inTable = false;
-      let tableRows = [];
-      let inList = false;
-
-      const inlineFmt = (s) => escapeHtml(s)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>');
-
-      const flushTable = () => {
-        if (!inTable) return;
-        inTable = false;
-        if (tableRows.length < 2) return;
-        const headers = tableRows[0].split('|').slice(1, -1).map(c => c.trim());
-        const body = tableRows.slice(2);
-        html += '<table><thead><tr>' + headers.map(h => `<th>${inlineFmt(h)}</th>`).join('') + '</tr></thead><tbody>';
-        for (const r of body) {
-          const cols = r.split('|').slice(1, -1).map(c => c.trim());
-          html += '<tr>' + cols.map(c => `<td>${inlineFmt(c)}</td>`).join('') + '</tr>';
-        }
-        html += '</tbody></table>';
-        tableRows = [];
-      };
-
-      const flushList = () => {
-        if (inList) { html += '</ul>'; inList = false; }
-      };
-
-      for (const raw of lines) {
-        const line = raw.trimEnd();
-        if (line.trim().startsWith('|')) {
-          flushList();
-          inTable = true;
-          tableRows.push(line.trim());
-          continue;
-        } else {
-          flushTable();
-        }
-        if (line.startsWith('### ')) { flushList(); html += `<h3>${inlineFmt(line.slice(4))}</h3>`; }
-        else if (line.startsWith('#### ')) { flushList(); html += `<h4>${inlineFmt(line.slice(5))}</h4>`; }
-        else if (line.startsWith('- ') || /^\d+\.\s/.test(line)) {
-          if (!inList) { html += '<ul>'; inList = true; }
-          const cleaned = line.replace(/^(-\s|\d+\.\s)/, '');
-          html += `<li>${inlineFmt(cleaned)}</li>`;
-        } else if (line.trim() === '') {
-          flushList();
-        } else {
-          flushList();
-          html += `<p>${inlineFmt(line)}</p>`;
-        }
-      }
-      flushTable();
-      flushList();
-      return html;
-    }
-
-    async function refreshStatus() {
-      const res = await fetch('/api/status');
-      if (!res.ok) return;
-      const data = await res.json();
-
-      if (data.security && data.security.tls) {
-        const tls = data.security.tls;
-        document.getElementById('tlsCipherBadge').textContent = `${tls.protocol} · ${tls.key_bits}-bit`;
-        document.getElementById('tlsSummaryText').innerHTML =
-          `Backend Hop: <code>${escapeHtml(tls.protocol)}</code> · <code>${escapeHtml(tls.cipher)}</code> · Studio UI: <code>${escapeHtml(data.security.browser_to_studio_scheme)}</code><br/>` +
-          `Auth: <strong>Asymmetric ES256 JWT (Public-Key Verified) + Isolated HMAC-SHA256</strong>`;
-        document.getElementById('authOkCount').textContent = data.security.authenticated_calls_total;
-        document.getElementById('authBlockedCount').textContent = data.security.blocked_false_auth_total;
-
-        const events = data.security.recent_false_auth_events || [];
-        document.getElementById('falseAuthEventsBox').innerHTML = events.slice(0, 4).map(ev => `
-          <div class="event-row">
-            <strong>[${escapeHtml(ev.status_code)}] ${escapeHtml(ev.category)}</strong> on <code>${escapeHtml(ev.service)}</code><br/>
-            <span style="color:var(--muted);">${escapeHtml(ev.detail)}</span>
-          </div>
-        `).join('');
-      }
-
-      document.getElementById('ordersCount').textContent = `${data.orders_service.tools_count} MCP Tools`;
-      document.getElementById('ordersTools').innerHTML = data.orders_service.tools.map(t => {
-        const isNew = t.name === 'expedite_reroute_shipment';
-        return `<span class="tool-chip ${isNew ? 'new-tool' : ''}" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}${isNew ? ' ★ NEW' : ''}</span>`;
-      }).join('');
-
-      document.getElementById('supportCount').textContent = `${data.support_service.tools_count} MCP Tools`;
-      document.getElementById('supportTools').innerHTML = data.support_service.tools.map(t =>
-        `<span class="tool-chip" title="${escapeHtml(t.description)}">${escapeHtml(t.name)}</span>`
-      ).join('');
-
-      const btn = document.getElementById('btnLiveDiscover');
-      if (data.live_endpoint_enabled) {
-        btn.classList.add('active');
-        btn.textContent = '✓ Live Endpoint Active (expedite_reroute_shipment)';
-      } else {
-        btn.classList.remove('active');
-        btn.textContent = '⚡ Live Add Endpoint + synapse build --discover';
-      }
-    }
-
-    async function simulateAttacks() {
-      const btn = document.getElementById('btnShield');
-      btn.disabled = true;
-      btn.textContent = 'Probing Defenses...';
-      try {
-        const res = await fetch('/api/security/simulate-attacks', { method: 'POST' });
-        const data = await res.json();
-        const card = document.getElementById('attackSimCard');
-        card.style.display = 'block';
-        document.getElementById('attackSimBadge').textContent = data.all_attacks_blocked
-          ? '✓ 4/4 Attacks Recognized & Blocked'
-          : 'Check Alert';
-        document.getElementById('attackSimBody').innerHTML = (data.simulations || []).map(s => `
-          <div class="trace-item" style="border-color:rgba(16,185,129,0.35);">
-            <div class="trace-head">
-              <strong>${escapeHtml(s.attack)}</strong>
-              <span class="sys-badge sys-alert">HTTP ${escapeHtml(s.status_code)} BLOCKED</span>
-            </div>
-            <div style="margin-top:4px;color:var(--muted);">
-              Target: <code>${escapeHtml(s.target)}</code> → Recognized: <em>${escapeHtml(s.response)}</em>
-            </div>
-          </div>
-        `).join('');
-        await refreshStatus();
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '🛡️ Simulate False-Auth Attacks';
-      }
-    }
-
-    let lastAskResponse = null;
-    let showBlindLLMView = false;
-
-    function toggleBlindInspector() {
-      showBlindLLMView = !showBlindLLMView;
-      const btn = document.getElementById('btnBlaToggle');
-      if (showBlindLLMView) {
-        btn.textContent = '🕶️ View: Blind LLM Context (Identity-Blinded)';
-        btn.style.background = 'rgba(167,139,250,0.22)';
-      } else {
-        btn.textContent = '👤 View: Operator (Unblinded)';
-        btn.style.background = '';
-      }
-      if (lastAskResponse) renderAskPayload(lastAskResponse);
-    }
-
-    function renderAskPayload(data) {
-      const strip = document.getElementById('metaStrip');
-      strip.style.display = 'flex';
-      const latencyLabel = data.llm_used
-        ? `⚡ MCP: ${escapeHtml(data.mcp_transport_latency_ms)} ms + LLM: ${escapeHtml(data.llm_inference_latency_ms)} ms`
-        : `⚡ MCP Transport: ${escapeHtml(data.mcp_transport_latency_ms)} ms (Rule-Based Orchestrator, 0 LLM ms)`;
-      const blaCount = data.bla ? data.bla.unique_entities_blinded : 0;
-      strip.innerHTML = `
-        <span class="pill ok">🔒 TLS 1.3 + ES256 JWT/HMAC</span>
-        <span class="pill ok">🕶️ BLA: ${escapeHtml(blaCount)} Entities Blinded</span>
-        <span class="pill ${data.cross_system_verified ? 'ok' : ''}">
-          ${data.cross_system_verified ? '✓ Cross-System Join (2 MCP Servers)' : '1 MCP Server Used'}
-        </span>
-        <span class="pill fast">${latencyLabel}</span>
-      `;
-
-      if (data.bla) {
-        document.getElementById('blaBadge').textContent = `${data.bla.unique_entities_blinded} Blinded`;
-        document.getElementById('blaTokensBox').innerHTML = (data.bla.mappings || []).map(m =>
-          `<span class="tool-chip" title="Redacted entity (${escapeHtml(m.category)})">${escapeHtml(m.blind_token)} → ${escapeHtml(m.redacted_preview)}</span>`
-        ).join('');
-      }
-
-      const activeMarkdown = showBlindLLMView ? data.blind_answer : data.answer;
-      document.getElementById('answerBox').innerHTML = renderMarkdown(activeMarkdown);
-      document.getElementById('traceSummary').textContent =
-        `${data.tool_calls_count} calls in ${data.total_latency_ms} ms (${showBlindLLMView ? 'Showing Blinded LLM Payloads' : 'Showing Unblinded Operator Payloads'})`;
-      document.getElementById('traceList').innerHTML = data.trace.map((step, idx) => {
-        const shownArgs = showBlindLLMView ? (step.blinded_arguments ?? step.arguments) : step.arguments;
-        const shownOut = showBlindLLMView ? (step.blinded_output ?? step.output) : step.output;
-        return `
-          <details class="trace-item">
-            <summary class="trace-head">
-              <span>
-                <strong>#${idx + 1}</strong>
-                <span class="sys-badge ${step.server.includes('orders') ? 'sys-orders' : 'sys-support'}">${escapeHtml(step.system_badge)}</span>
-                <code style="margin-left:6px;color:#f8fafc;">${escapeHtml(step.tool)}(${escapeHtml(JSON.stringify(shownArgs))})</code>
-              </span>
-              <span style="color:var(--muted);">${escapeHtml(step.latency_ms)} ms · 🕶️🔒</span>
-            </summary>
-            <pre style="margin:8px 0 0;font-size:11.5px;color:#cbd5e1;overflow-x:auto;">${escapeHtml(JSON.stringify(shownOut, null, 2))}</pre>
-          </details>
-        `;
-      }).join('');
-    }
-
-    function runPrompt(q) {
-      document.getElementById('questionInput').value = q;
-      submitQuestion();
-    }
-
-    async function submitQuestion() {
-      const q = document.getElementById('questionInput').value.trim();
-      if (!q) return;
-      const btn = document.getElementById('askBtn');
-      if (btn.disabled) return;
-      btn.disabled = true;
-      btn.textContent = 'Running...';
-      document.getElementById('answerBox').innerHTML = '<p style="color:var(--cyan);">Querying TLS-encrypted SupplyPulse &amp; CareDesk MCP channels through BLA Vault...</p>';
-
-      try {
-        const res = await fetch('/api/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question: q, bla_enabled: true })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          document.getElementById('answerBox').innerHTML = `<p style="color:var(--rose);">Error: ${escapeHtml(data.detail || 'Request failed')}</p>`;
-          return;
-        }
-        lastAskResponse = data;
-        renderAskPayload(data);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Ask Copilot →';
-        await refreshStatus();
-      }
-    }
-
-    async function triggerLiveDiscover() {
-      const btn = document.getElementById('btnLiveDiscover');
-      const resetBtn = document.getElementById('btnReset');
-      if (btn.disabled) return;
-      btn.disabled = true;
-      resetBtn.disabled = true;
-      btn.textContent = 'Running synapse build --discover...';
-      try {
-        const res = await fetch('/api/live-discover/enable', { method: 'POST' });
-        const data = await res.json();
-        document.getElementById('discoverCard').style.display = 'block';
-        document.getElementById('discoverBadge').textContent = res.ok ? `+ ${data.added_tool}` : 'Build Error';
-        document.getElementById('discoverTerminal').textContent = res.ok
-          ? `$ ${data.command}\n\n${data.stdout}`
-          : `Error: ${data.detail || 'Rebuild failed'}`;
-        await refreshStatus();
-      } finally {
-        btn.disabled = false;
-        resetBtn.disabled = false;
-      }
-    }
-
-    async function resetDemo() {
-      const btn = document.getElementById('btnReset');
-      if (btn.disabled) return;
-      btn.disabled = true;
-      try {
-        const res = await fetch('/api/live-discover/reset', { method: 'POST' });
-        const data = await res.json();
-        document.getElementById('attackSimCard').style.display = 'none';
-        document.getElementById('discoverCard').style.display = 'block';
-        document.getElementById('discoverBadge').textContent = 'Baseline Restored';
-        document.getElementById('discoverTerminal').textContent = `$ ${data.command}\n\n${data.stdout}`;
-        await refreshStatus();
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    refreshStatus();
-  </script>
+  <script src="/static/app.js"></script>
 </body>
 </html>

@@ -1,13 +1,4 @@
-"""Asymmetric ES256 (ECDSA P-256) JWT + Per-Service HMAC-SHA256 + False-Auth Intrusion Guard.
-
-Zero-Trust Compartmentalization:
-- Only the control-plane token authority holds the ECDSA P-256 PRIVATE key.
-- Backend microservices (`orders_logistics_service`, `support_ticketing_service`) receive ONLY
-  the ECDSA P-256 PUBLIC key (`ISSUER_PUBLIC_KEY_PEM`) and their own isolated HMAC secret.
-- Compromising one backend service yields zero ability to forge JWTs for any service, while
-  still allowing public-key signature verification to distinguish a forged token from a genuine
-  cross-service token replayed against the wrong audience (`CROSS_SERVICE_AUDIENCE_SPOOF`).
-"""
+"""Asymmetric ES256 (ECDSA P-256) JWT + Full-Body HMAC-SHA256 + Anti-DoS Intrusion Guard."""
 
 from __future__ import annotations
 
@@ -30,6 +21,8 @@ MAX_CLOCK_SKEW_SECONDS = 60
 BRUTE_FORCE_WINDOW_SECONDS = 30
 BRUTE_FORCE_THRESHOLD = 6
 LOCKOUT_DURATION_SECONDS = 15
+MAX_TRACKED_NONCES = 4096
+MAX_TRACKED_ACTORS = 1024
 
 
 def generate_es256_keypair_pem() -> Tuple[str, str]:
@@ -74,14 +67,17 @@ def compute_request_hmac(
     path: str,
     timestamp: str,
     nonce: str,
+    body_bytes: bytes = b"",
+    query: str = "",
 ) -> str:
-    """Computes HMAC-SHA256 over HTTP method, path, timestamp, and unique request nonce."""
-    canonical = f"{method.upper()}:{path}:{timestamp}:{nonce}".encode("utf-8")
+    """Computes HMAC-SHA256 over method, path, query, timestamp, nonce, and SHA-256(body)."""
+    body_hash = hashlib.sha256(body_bytes or b"").hexdigest()
+    canonical = f"{method.upper()}:{path}:{query}:{timestamp}:{nonce}:{body_hash}".encode("utf-8")
     return hmac.new(hmac_secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
 
 
 class FalseAuthRecognitionGuard:
-    """Verifies asymmetric ES256 JWTs (public key only) + per-service HMAC request signatures."""
+    """Verifies ES256 JWTs + full-body HMAC signatures with unspoofable, bounded rate-limiting."""
 
     def __init__(
         self,
@@ -94,9 +90,9 @@ class FalseAuthRecognitionGuard:
         self.hmac_secret = hmac_secret
 
         self._lock = threading.RLock()
-        self._seen_nonces: Dict[str, float] = {}
-        self._failure_timestamps: Dict[str, Deque[float]] = collections.defaultdict(collections.deque)
-        self._lockout_until: Dict[str, float] = {}
+        self._seen_nonces: collections.OrderedDict[str, float] = collections.OrderedDict()
+        self._failure_timestamps: collections.OrderedDict[str, Deque[float]] = collections.OrderedDict()
+        self._lockout_until: collections.OrderedDict[str, float] = collections.OrderedDict()
         self._audit_events: Deque[Dict[str, Any]] = collections.deque(maxlen=100)
         self.stats = {
             "authenticated_requests": 0,
@@ -104,33 +100,62 @@ class FalseAuthRecognitionGuard:
             "by_category": collections.Counter(),
         }
 
+    def ensure_configured(self) -> None:
+        """Fail-closed guard preventing accidental startup with empty or weak fallback secrets."""
+        if not self.issuer_public_key_pem or "BEGIN PUBLIC KEY" not in self.issuer_public_key_pem:
+            raise HTTPException(status_code=503, detail="Service misconfigured: ISSUER_PUBLIC_KEY_PEM missing.")
+        if not self.hmac_secret or len(self.hmac_secret) < 16:
+            raise HTTPException(status_code=503, detail="Service misconfigured: HMAC secret missing or too short.")
+
+    def _evict_bounded_maps(self, now: float) -> None:
+        # Prune expired nonces from front of OrderedDict, then enforce hard cap
+        while self._seen_nonces:
+            oldest_nonce, exp = next(iter(self._seen_nonces.items()))
+            if exp < now or len(self._seen_nonces) > MAX_TRACKED_NONCES:
+                self._seen_nonces.pop(oldest_nonce, None)
+            else:
+                break
+        while len(self._failure_timestamps) > MAX_TRACKED_ACTORS:
+            self._failure_timestamps.popitem(last=False)
+        while len(self._lockout_until) > MAX_TRACKED_ACTORS:
+            self._lockout_until.popitem(last=False)
+
     def _record_false_auth(
         self,
-        client_id: str,
+        actor_bucket: str,
         category: str,
         path: str,
         method: str,
         detail: str,
         status_code: int,
-    ) -> None:
+    ) -> Optional[float]:
+        """Records failure and returns active lockout seconds remaining if threshold is exceeded."""
         now = time.time()
         with self._lock:
+            self._evict_bounded_maps(now)
             self.stats["blocked_false_auth"] += 1
             self.stats["by_category"][category] += 1
 
-            window = self._failure_timestamps[client_id]
+            window = self._failure_timestamps.get(actor_bucket)
+            if window is None:
+                window = collections.deque()
+                self._failure_timestamps[actor_bucket] = window
+            else:
+                self._failure_timestamps.move_to_end(actor_bucket)
+
             window.append(now)
             while window and (now - window[0]) > BRUTE_FORCE_WINDOW_SECONDS:
                 window.popleft()
 
             if len(window) >= BRUTE_FORCE_THRESHOLD:
-                self._lockout_until[client_id] = now + LOCKOUT_DURATION_SECONDS
+                self._lockout_until[actor_bucket] = now + LOCKOUT_DURATION_SECONDS
+                self._lockout_until.move_to_end(actor_bucket)
 
             self._audit_events.appendleft(
                 {
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "service": self.service_name,
-                    "client": client_id,
+                    "client": actor_bucket,
                     "method": method,
                     "path": path,
                     "category": category,
@@ -138,30 +163,30 @@ class FalseAuthRecognitionGuard:
                     "detail": detail,
                 }
             )
+            locked_until = self._lockout_until.get(actor_bucket, 0.0)
+            return round(locked_until - now, 1) if locked_until > now else None
 
-    def _prune_nonces(self, now: float) -> None:
-        expired = [n for n, exp in self._seen_nonces.items() if exp < now]
-        for n in expired:
-            self._seen_nonces.pop(n, None)
-
-    def verify_request(self, request: Request) -> Dict[str, Any]:
-        """Validates ES256 Bearer JWT (via public key) + HMAC headers; logs & blocks anomalies."""
-        path = request.url.path
-        method = request.method.upper()
-        client_ip = request.client.host if request.client else "unknown"
-        probe_actor = request.headers.get("x-actor-id", client_ip)[:48]
+    def _fail_or_lockout(
+        self,
+        actor_bucket: str,
+        category: str,
+        path: str,
+        method: str,
+        detail: str,
+        status_code: int,
+        public_msg: str,
+    ) -> None:
         now = time.time()
-
         with self._lock:
-            locked_until = self._lockout_until.get(probe_actor, 0.0)
-            if locked_until > now:
-                rem = round(locked_until - now, 1)
+            existing_lock = self._lockout_until.get(actor_bucket, 0.0)
+            if existing_lock > now:
+                rem = round(existing_lock - now, 1)
                 self._record_false_auth(
-                    probe_actor,
+                    actor_bucket,
                     "BRUTE_FORCE_LOCKOUT",
                     path,
                     method,
-                    f"Actor temporarily locked out ({rem}s left) after repeated false-auth attempts.",
+                    f"Source IP locked out ({rem}s left) after repeated false-auth attempts.",
                     429,
                 )
                 raise HTTPException(
@@ -169,21 +194,40 @@ class FalseAuthRecognitionGuard:
                     detail=f"False-Auth Lockout Active: retry after {rem}s.",
                 )
 
+        self._record_false_auth(actor_bucket, category, path, method, detail, status_code)
+        raise HTTPException(status_code=status_code, detail=public_msg)
+
+    async def verify_request(self, request: Request) -> Dict[str, Any]:
+        """Validates ES256 JWT + full-body HMAC.
+
+        Anti-DoS Design:
+        - Rate-limit buckets are keyed strictly by network peer IP (never untrusted X-Actor-Id!).
+        - Legitimate requests carrying a valid ES256 JWT + valid HMAC signature succeed even if
+          an unauthenticated attacker on the same host/IP triggered a brute-force lockout!
+        """
+        self.ensure_configured()
+        path = request.url.path
+        query = request.url.query or ""
+        method = request.method.upper()
+        # Never trust unauthenticated X-Actor-Id header for rate-limit bucketing!
+        actor_bucket = request.client.host if request.client else "unknown"
+        now = time.time()
+
         auth_header = request.headers.get("authorization", "").strip()
         if not auth_header or not auth_header.lower().startswith("bearer "):
-            self._record_false_auth(
-                probe_actor,
+            self._fail_or_lockout(
+                actor_bucket,
                 "MISSING_CREDENTIALS",
                 path,
                 method,
                 "Missing Authorization Bearer token on protected endpoint.",
                 401,
+                "Authentication required: missing Bearer token.",
             )
-            raise HTTPException(status_code=401, detail="Authentication required: missing Bearer token.")
 
         raw_token = auth_header[7:].strip()
 
-        # 1. Verify Asymmetric ES256 Signature using ONLY the Issuer's Public Key (no shared secrets!)
+        # 1. Verify Asymmetric ES256 Signature via Public Key Only
         try:
             unverified_aud_claims = jwt.decode(
                 raw_token,
@@ -192,107 +236,107 @@ class FalseAuthRecognitionGuard:
                 issuer=ISSUER,
                 options={"verify_aud": False, "require": ["exp", "iat", "iss", "aud", "jti"]},
             )
-        except jwt.ExpiredSignatureError as exc:
-            self._record_false_auth(
-                probe_actor,
+        except jwt.ExpiredSignatureError:
+            self._fail_or_lockout(
+                actor_bucket,
                 "EXPIRED_TOKEN",
                 path,
                 method,
                 "Presented an expired ES256 Bearer JWT.",
                 401,
+                "Bearer token has expired.",
             )
-            raise HTTPException(status_code=401, detail="Bearer token has expired.") from exc
         except jwt.PyJWTError as exc:
-            self._record_false_auth(
-                probe_actor,
+            self._fail_or_lockout(
+                actor_bucket,
                 "TAMPERED_OR_FORGED_TOKEN",
                 path,
                 method,
                 f"Asymmetric ES256 public-key signature check failed ({type(exc).__name__}).",
                 401,
+                "Invalid or forged ES256 Bearer token signature.",
             )
-            raise HTTPException(status_code=401, detail="Invalid or forged ES256 Bearer token signature.") from exc
 
         # 2. Enforce Strict Audience Compartment (`aud` must equal this service!)
         token_aud = unverified_aud_claims.get("aud")
         if token_aud != self.service_name:
-            self._record_false_auth(
-                probe_actor,
+            self._fail_or_lockout(
+                actor_bucket,
                 "CROSS_SERVICE_AUDIENCE_SPOOF",
                 path,
                 method,
                 f"Cross-service token replay detected via ES256 public key: token aud='{token_aud}' rejected by '{self.service_name}'.",
                 403,
-            )
-            raise HTTPException(
-                status_code=403,
-                detail=f"Cross-service false auth blocked: '{token_aud}' token rejected by '{self.service_name}'.",
+                f"Cross-service false auth blocked: '{token_aud}' token rejected by '{self.service_name}'.",
             )
 
-        # 3. Verify Per-Request Anti-Replay Timestamp + Nonce + Service-Isolated HMAC-SHA256
+        # 3. Verify Per-Request Timestamp + Nonce + Full-Body/Query HMAC-SHA256
         req_ts = request.headers.get("x-request-timestamp", "").strip()
         req_nonce = request.headers.get("x-request-nonce", "").strip()
         req_sig = request.headers.get("x-request-signature", "").strip()
 
         if not req_ts or not req_nonce or not req_sig:
-            self._record_false_auth(
-                probe_actor,
+            self._fail_or_lockout(
+                actor_bucket,
                 "MISSING_HMAC_ENVELOPE",
                 path,
                 method,
                 "Valid ES256 JWT presented without per-request HMAC timestamp/nonce/signature headers.",
                 401,
+                "Missing X-Request-Timestamp/Nonce/Signature headers.",
             )
-            raise HTTPException(status_code=401, detail="Missing X-Request-Timestamp/Nonce/Signature headers.")
 
         try:
             ts_int = int(req_ts)
-        except ValueError as exc:
-            self._record_false_auth(
-                probe_actor,
+        except ValueError:
+            self._fail_or_lockout(
+                actor_bucket,
                 "TAMPERED_HMAC_ENVELOPE",
                 path,
                 method,
                 "Non-integer X-Request-Timestamp header.",
                 401,
+                "Malformed X-Request-Timestamp.",
             )
-            raise HTTPException(status_code=401, detail="Malformed X-Request-Timestamp.") from exc
 
         if abs(now - ts_int) > MAX_CLOCK_SKEW_SECONDS:
-            self._record_false_auth(
-                probe_actor,
+            self._fail_or_lockout(
+                actor_bucket,
                 "REPLAY_TIMESTAMP_SKEW",
                 path,
                 method,
                 f"Stale/replayed request timestamp skew={round(abs(now - ts_int))}s (> {MAX_CLOCK_SKEW_SECONDS}s).",
                 401,
+                "Request timestamp outside allowed anti-replay window.",
             )
-            raise HTTPException(status_code=401, detail="Request timestamp outside allowed anti-replay window.")
 
-        expected_sig = compute_request_hmac(self.hmac_secret, method, path, req_ts, req_nonce)
+        body_bytes = await request.body()
+        expected_sig = compute_request_hmac(
+            self.hmac_secret, method, path, req_ts, req_nonce, body_bytes=body_bytes, query=query
+        )
         if not secrets.compare_digest(req_sig, expected_sig):
-            self._record_false_auth(
-                probe_actor,
+            self._fail_or_lockout(
+                actor_bucket,
                 "TAMPERED_HMAC_SIGNATURE",
                 path,
                 method,
-                "HMAC-SHA256 request signature mismatch.",
+                "HMAC-SHA256 request/body/query signature mismatch (payload or header tampering detected).",
                 401,
+                "Invalid X-Request-Signature (header, query, or body tampered).",
             )
-            raise HTTPException(status_code=401, detail="Invalid X-Request-Signature.")
 
         with self._lock:
-            self._prune_nonces(now)
+            self._evict_bounded_maps(now)
             if req_nonce in self._seen_nonces:
-                self._record_false_auth(
-                    probe_actor,
+                self._fail_or_lockout(
+                    actor_bucket,
                     "REPLAY_NONCE_DETECTED",
                     path,
                     method,
                     f"Duplicate request nonce '{req_nonce[:16]}' replayed within window.",
                     401,
+                    "Replay attack blocked: duplicate nonce.",
                 )
-                raise HTTPException(status_code=401, detail="Replay attack blocked: duplicate nonce.")
             self._seen_nonces[req_nonce] = now + MAX_CLOCK_SKEW_SECONDS + 5
             self.stats["authenticated_requests"] += 1
 
@@ -308,7 +352,7 @@ class FalseAuthRecognitionGuard:
             }
             return {
                 "service": self.service_name,
-                "jwt_algorithm": "ES256 (Public-Key Verified Only — Zero Shared JWT Secrets)",
+                "jwt_algorithm": "ES256 (Public-Key Verified) + Full-Body/Query HMAC-SHA256",
                 "authenticated_requests": self.stats["authenticated_requests"],
                 "blocked_false_auth": self.stats["blocked_false_auth"],
                 "by_category": dict(self.stats["by_category"]),

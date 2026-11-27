@@ -1,11 +1,4 @@
-"""Explicit, Auditable TLS + ES256 JWT + HMAC Wrapper for Synapse-Generated MCP Servers.
-
-Replaces implicit `PYTHONPATH` / `sitecustomize.py` hooks with a first-class, inspectable
-entrypoint (`python security/authenticated_mcp_runner.py <path/to/synapse_auto_server.py>`):
-1. Configures a pooled `requests.Session` verified strictly against `REQUESTS_CA_BUNDLE`.
-2. Attaches an explicit `requests.auth.AuthBase` signer (`ScopedES256AndHMACAuth`) to that session.
-3. Executes the unmodified Synapse-generated MCP server via `runpy.run_path(..., run_name='__main__')`.
-"""
+"""Explicit, Auditable TLS + ES256 JWT + Full-Body HMAC Wrapper for Synapse MCP Servers."""
 
 from __future__ import annotations
 
@@ -24,7 +17,7 @@ from requests.auth import AuthBase
 
 
 class ScopedES256AndHMACAuth(AuthBase):
-    """Explicit requests AuthBase attaching ES256 Bearer JWT + anti-replay HMAC headers."""
+    """Explicit requests AuthBase signing method, path, query, timestamp, nonce, and SHA256(body)."""
 
     def __init__(self, bearer_jwt: str, hmac_secret: str) -> None:
         self.bearer_jwt = bearer_jwt
@@ -34,10 +27,23 @@ class ScopedES256AndHMACAuth(AuthBase):
         if self.bearer_jwt and "Authorization" not in r.headers:
             r.headers["Authorization"] = f"Bearer {self.bearer_jwt}"
         if self.hmac_secret:
-            parsed_path = urlsplit(r.url or "/").path or "/"
+            parsed = urlsplit(r.url or "/")
+            parsed_path = parsed.path or "/"
+            parsed_query = parsed.query or ""
+            raw_body = r.body
+            if isinstance(raw_body, str):
+                body_bytes = raw_body.encode("utf-8")
+            elif isinstance(raw_body, (bytes, bytearray)):
+                body_bytes = bytes(raw_body)
+            else:
+                body_bytes = b""
+
+            body_hash = hashlib.sha256(body_bytes).hexdigest()
             ts = str(int(time.time()))
             nonce = secrets.token_hex(12)
-            canonical = f"{(r.method or 'GET').upper()}:{parsed_path}:{ts}:{nonce}".encode("utf-8")
+            canonical = (
+                f"{(r.method or 'GET').upper()}:{parsed_path}:{parsed_query}:{ts}:{nonce}:{body_hash}"
+            ).encode("utf-8")
             sig = hmac.new(self.hmac_secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
             r.headers["X-Request-Timestamp"] = ts
             r.headers["X-Request-Nonce"] = nonce
@@ -66,7 +72,6 @@ def main() -> None:
         kwargs.setdefault("timeout", 10.0)
         return session.request(method=method, url=url, **kwargs)
 
-    # Bind the authenticated TLS keep-alive session for the child MCP process
     requests.get = lambda url, **kw: _dispatch("GET", url, **kw)
     requests.post = lambda url, **kw: _dispatch("POST", url, **kw)
     requests.put = lambda url, **kw: _dispatch("PUT", url, **kw)

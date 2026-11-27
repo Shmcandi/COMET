@@ -33,7 +33,7 @@ _INTERNAL_TOKEN = os.environ.get("COMET_INTERNAL_TOKEN", "")
 _AUTH_GUARD = FalseAuthRecognitionGuard(
     service_name="support_ticketing_service",
     issuer_public_key_pem=os.environ.get("ISSUER_PUBLIC_KEY_PEM", ""),
-    hmac_secret=os.environ.get("CAREDESK_HMAC_SECRET", "dev-caredesk-hmac-secret"),
+    hmac_secret=os.environ.get("CAREDESK_HMAC_SECRET", ""),
 )
 
 
@@ -44,8 +44,8 @@ async def enforce_service_auth_middleware(request: Request, call_next):
         return await call_next(request)
     if path.startswith("/internal/"):
         token = request.headers.get("x-internal-token", "")
-        if not _INTERNAL_TOKEN or not secrets.compare_digest(token, _INTERNAL_TOKEN):
-            actor = request.headers.get("x-actor-id", request.client.host if request.client else "unknown")
+        if not _INTERNAL_TOKEN or len(_INTERNAL_TOKEN) < 16 or not secrets.compare_digest(token, _INTERNAL_TOKEN):
+            actor = request.client.host if request.client else "unknown"
             _AUTH_GUARD._record_false_auth(
                 actor,
                 "PRIVILEGE_ESCALATION_ATTEMPT",
@@ -58,7 +58,7 @@ async def enforce_service_auth_middleware(request: Request, call_next):
         return await call_next(request)
 
     try:
-        _AUTH_GUARD.verify_request(request)
+        await _AUTH_GUARD.verify_request(request)
     except HTTPException as exc:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
     return await call_next(request)

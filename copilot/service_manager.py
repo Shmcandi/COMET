@@ -77,8 +77,15 @@ def create_verified_ssl_context() -> ssl.SSLContext:
     return ctx
 
 
-def build_signed_service_headers(key: str, method: str, path: str, subject: str = "studio-control-plane") -> Dict[str, str]:
-    """Builds an asymmetric ES256 Bearer JWT + service-isolated HMAC-SHA256 anti-replay envelope."""
+def build_signed_service_headers(
+    key: str,
+    method: str,
+    path: str,
+    subject: str = "studio-control-plane",
+    body_bytes: bytes = b"",
+    query: str = "",
+) -> Dict[str, str]:
+    """Builds an asymmetric ES256 Bearer JWT + full-body/query HMAC-SHA256 anti-replay envelope."""
     cfg = SERVICES[key]
     token = issue_scoped_es256_jwt(
         issuer_private_key_pem=ISSUER_PRIVATE_KEY_PEM,
@@ -88,7 +95,9 @@ def build_signed_service_headers(key: str, method: str, path: str, subject: str 
     )
     ts = str(int(time.time()))
     nonce = secrets.token_hex(12)
-    sig = compute_request_hmac(cfg["hmac_secret"], method.upper(), path, ts, nonce)
+    sig = compute_request_hmac(
+        cfg["hmac_secret"], method.upper(), path, ts, nonce, body_bytes=body_bytes, query=query
+    )
     return {
         "Authorization": f"Bearer {token}",
         "X-Request-Timestamp": ts,

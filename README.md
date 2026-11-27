@@ -41,7 +41,7 @@ Per Page 7 of the Participant Guide (*"Expose only what the agent needs. Fewer, 
 # 3. Run Automated CLI Judge Demo (Prompts 1-2 + Before/After Live `synapse build --discover`)
 .\.venv\Scripts\python.exe .\run_demo.py
 
-# 4. Run 33-Assertion Security, BLA, Loophole & Latency Verification Suite
+# 4. Run 42-Assertion Security, Red-Team Patch, BLA & Latency Verification Suite
 .\.venv\Scripts\python.exe .\test_security_and_latency.py
 ```
 
@@ -55,9 +55,9 @@ Open **http://127.0.0.1:8100** to demo:
 
 ## 4. Security, Compartmentalization (`ES256`) & Blind LLM Agents (BLA)
 
-- **Backend `TLSv1.3` & CA Pinning (`./security/pki.py`)**: Generates an RFC 5280 `VERIFY_X509_STRICT` ECDSA P-256 Root CA (`./certs/comet_ca.pem`) and SAN server cert (`127.0.0.1`, `localhost`). Both backends run exclusively over `HTTPS` (`TLS_AES_256_GCM_SHA384`).
-- **🕶️ Blind LLM Agents (BLA) Identity Blinding (`./security/blind_llm_guard.py`)**: Pre-seeds directory organizations/aliases & staff for Turn-1 prompt blinding and replaces `customer_name`, `assigned_to`, emails, and phones in MCP outputs (`subject`/`notes` included) with deterministic 6-hex `HMAC-SHA256` tokens (`[ORG_BLIND_XXXXXX]`, `[STAFF_BLIND_XXXXXX]`), preserving cross-system joins while unblinding writebacks locally. Includes a live **🕶️ Blind LLM Context vs. Operator View** toggle in the Studio.
-- **Compartmentalized Asymmetric `ES256` JWT + HMAC-SHA256 (`./security/auth_guard.py`, `./security/authenticated_mcp_runner.py`)**: Backends receive **only** `ISSUER_PUBLIC_KEY_PEM` (zero shared JWT secrets) plus their own isolated HMAC secret, wrapped explicitly via `authenticated_mcp_runner.py` while keeping `synapse_auto_server.py` untouched. Recognizes missing tokens (`401`), forged `ES256` tokens (`401`), cross-service `CareDesk → SupplyPulse` token replay (`403`), timestamp/nonce replays (`401`), and brute-force bursts (`429`).
+- **Backend `TLSv1.3` & CA Pinning (`./security/pki.py`)**: Generates an RFC 5280 `VERIFY_X509_STRICT` ECDSA P-256 Root CA (`./certs/comet_ca.pem`) and SAN server cert (`127.0.0.1`, `localhost`) with owner-only private-key ACLs. Both backends run exclusively over `HTTPS` (`TLS_AES_256_GCM_SHA384`).
+- **🕶️ Blind LLM Agents (BLA) Identity Blinding (`./security/blind_llm_guard.py`)**: Enforced server-side (`COMET_BLA_ENFORCED=1`). Pre-seeds directory organizations/aliases & staff with case-insensitive matching (`re.IGNORECASE`) and canonical alias unification so Turn-1 user prompts and structured/unstructured MCP outputs (`customer_name`, `assigned_to`, emails, phones, `subject`/`notes`) resolve to deterministic 6-hex `HMAC-SHA256` tokens (`[ORG_BLIND_XXXXXX]`, `[STAFF_BLIND_XXXXXX]`), preserving cross-system joins while unblinding writebacks locally. Includes a live **🕶️ Blind LLM Context vs. Operator View** toggle in the Studio.
+- **Compartmentalized Asymmetric `ES256` JWT + Full-Body HMAC-SHA256 (`./security/auth_guard.py`, `./security/authenticated_mcp_runner.py`)**: Backends receive **only** `ISSUER_PUBLIC_KEY_PEM` (zero shared JWT secrets, zero fallback defaults) plus their own isolated HMAC secret signing `METHOD:PATH:QUERY:TIMESTAMP:NONCE:SHA256(BODY)`, wrapped explicitly via `authenticated_mcp_runner.py` while keeping `synapse_auto_server.py` untouched. Studio enforces `HttpOnly; SameSite=Strict` `ES256` cookies, mandatory `X-COMET-CSRF: 1` headers, `Sec-Fetch-Site` checks, and strict `script-src 'self'` CSP.
 
 ---
 

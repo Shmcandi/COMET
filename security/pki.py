@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import datetime
 import ipaddress
+import os
+import subprocess
 from pathlib import Path
 from typing import Tuple
 
@@ -127,4 +129,22 @@ def ensure_tls_certificates(force_regenerate: bool = False) -> Tuple[Path, Path,
             encryption_algorithm=serialization.NoEncryption(),
         )
     )
+    _restrict_private_key_permissions(SERVER_KEY_PATH)
     return CA_CERT_PATH, SERVER_CERT_PATH, SERVER_KEY_PATH
+
+
+def _restrict_private_key_permissions(key_path: Path) -> None:
+    """Restricts private key file permissions to the current OS user only."""
+    try:
+        os.chmod(key_path, 0o600)
+    except OSError:
+        pass
+    if os.name == "nt":
+        username = os.environ.get("USERNAME", "").strip()
+        if username:
+            subprocess.run(
+                ["icacls", str(key_path), "/inheritance:r", "/grant:r", f"{username}:(R,W)"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )

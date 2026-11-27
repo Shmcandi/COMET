@@ -1,18 +1,11 @@
-"""Blind LLM Agent (BLA) Privacy-Preserving Tokenization & De-Tokenization Vault.
+"""Blind LLM Agent (BLA) Identity-Blinding & Canonical Alias Tokenization Vault.
 
-Ensures the reasoning LLM operates completely *blind* to sensitive enterprise PII and
-customer/employee identities while preserving cross-system relational join consistency:
-1. Outbound to LLM (`blind_payload` / `blind_text`):
-   Replaces sensitive fields (`customer_name`, `assigned_to`, emails, phone numbers) with
-   deterministic, session-keyed HMAC-SHA256 pseudonyms (e.g., `[ORG_BLIND_9A4F]`,
-   `[STAFF_BLIND_2C81]`). Identical entities from `SupplyPulse ERP` and `CareDesk CRM`
-   map to the exact same blind token so the LLM can still join records across systems.
-2. Tool-Call Boundary (`unblind_payload`):
-   Automatically restores real values when a Blind LLM passes a blind token back into a
-   write tool (such as `create_proactive_ticket` or `update_or_escalate_ticket`).
-3. Operator Presentation (`unblind_text`):
-   Restores human-readable identities locally for the authenticated Studio operator, while
-   exposing the blinded transcript so judges can inspect exact Zero-PII LLM context.
+Hardened properties:
+- Case-insensitive word-boundary regex matching (`re.IGNORECASE`) so lowercase or mixed-case
+  operator prompts (e.g. `"check apex biolabs ticket"`) are caught on Turn 1.
+- Canonical alias unification so short names (`"Apex BioLabs"`) and legal names
+  (`"Apex BioLabs Pvt Ltd"`) resolve to the EXACT same `[ORG_BLIND_XXXXXX]` token across
+  user prompts, SupplyPulse ERP, and CareDesk CRM.
 """
 
 from __future__ import annotations
@@ -24,7 +17,7 @@ import secrets
 from typing import Any, Dict, List
 
 _EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
-_PHONE_RE = re.compile(r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b")
+_PHONE_RE = re.compile(r"(?<!\w)(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}(?!\w)")
 
 _SENSITIVE_FIELD_PREFIXES = {
     "customer_name": "ORG_BLIND",
@@ -36,18 +29,18 @@ _SENSITIVE_FIELD_PREFIXES = {
     "phone": "PHONE_BLIND",
 }
 
-
-_DEFAULT_KNOWN_ORGS = (
-    "Apex BioLabs Pvt Ltd",
-    "Apex BioLabs",
-    "Vanguard Robotics",
-    "Nova Retail Systems",
-    "Nova Retail",
-    "MedCore Diagnostics",
-    "MedCore",
-    "Zenith AgroTech",
-    "Orbit FinServe",
-)
+# Maps lowercase variants/aliases to their canonical display name so aliases share one blind token
+_CANONICAL_ORG_ALIASES: Dict[str, str] = {
+    "apex biolabs pvt ltd": "Apex BioLabs Pvt Ltd",
+    "apex biolabs": "Apex BioLabs Pvt Ltd",
+    "vanguard robotics": "Vanguard Robotics",
+    "nova retail systems": "Nova Retail Systems",
+    "nova retail": "Nova Retail Systems",
+    "medcore diagnostics": "MedCore Diagnostics",
+    "medcore": "MedCore Diagnostics",
+    "zenith agrotech": "Zenith AgroTech",
+    "orbit finserve": "Orbit FinServe",
+}
 
 _DEFAULT_KNOWN_STAFF = (
     "Priya Nair",
@@ -62,53 +55,83 @@ class BlindLLMVault:
     def __init__(self, session_key: bytes | None = None, preseed_directory: bool = True) -> None:
         self._key = session_key or secrets.token_bytes(32)
         self._token_to_raw: Dict[str, str] = {}
-        self._raw_to_token: Dict[str, str] = {}
+        self._alias_lower_to_token: Dict[str, str] = {}
         self._category_by_token: Dict[str, str] = {}
+        self._compiled_matcher: re.Pattern[str] | None = None
         self.tool_outputs_blinded = 0
         self.tool_args_unblinded = 0
+
         if preseed_directory:
-            for org in _DEFAULT_KNOWN_ORGS:
-                self._mint_token(org, "ORG_BLIND")
+            for alias_lower, canonical_org in _CANONICAL_ORG_ALIASES.items():
+                tok = self._mint_token(canonical_org, "ORG_BLIND")
+                self._alias_lower_to_token[alias_lower] = tok
             for staff in _DEFAULT_KNOWN_STAFF:
                 self._mint_token(staff, "STAFF_BLIND")
+            self._rebuild_matcher()
+
+    def _canonicalize(self, raw_value: str, prefix: str) -> str:
+        clean = raw_value.strip()
+        if prefix == "ORG_BLIND":
+            return _CANONICAL_ORG_ALIASES.get(clean.lower(), clean)
+        return clean
+
+    def _rebuild_matcher(self) -> None:
+        if not self._alias_lower_to_token:
+            self._compiled_matcher = None
+            return
+        # Longest phrases first so "Apex BioLabs Pvt Ltd" matches as a whole before "Apex BioLabs"
+        ordered = sorted(self._alias_lower_to_token.keys(), key=len, reverse=True)
+        escaped = "|".join(re.escape(k) for k in ordered)
+        self._compiled_matcher = re.compile(
+            rf"(?<![A-Za-z0-9])(?:{escaped})(?![A-Za-z0-9])",
+            re.IGNORECASE,
+        )
 
     def _mint_token(self, raw_value: str, prefix: str) -> str:
         clean = raw_value.strip()
         if not clean:
             return raw_value
-        # Already a blind token
         if clean.startswith("[") and clean.endswith("]") and "_BLIND_" in clean:
             return clean
-        if clean in self._raw_to_token:
-            return self._raw_to_token[clean]
+
+        canonical = self._canonicalize(clean, prefix)
+        canon_lower = canonical.lower()
+        if canon_lower in self._alias_lower_to_token:
+            tok = self._alias_lower_to_token[canon_lower]
+            if clean.lower() not in self._alias_lower_to_token:
+                self._alias_lower_to_token[clean.lower()] = tok
+                self._rebuild_matcher()
+            return tok
 
         digest = hmac.new(
-            self._key, f"{prefix}:{clean.lower()}".encode("utf-8"), hashlib.sha256
+            self._key, f"{prefix}:{canon_lower}".encode("utf-8"), hashlib.sha256
         ).hexdigest()[:6].upper()
         token = f"[{prefix}_{digest}]"
 
-        self._raw_to_token[clean] = token
-        self._token_to_raw[token] = clean
+        self._token_to_raw[token] = canonical
+        self._alias_lower_to_token[canon_lower] = token
+        self._alias_lower_to_token[clean.lower()] = token
         self._category_by_token[token] = prefix
+        self._rebuild_matcher()
         return token
 
     def blind_text(self, text: str) -> str:
-        """Replaces known registered entities plus inline emails/phones in free-form text."""
+        """Case-insensitively replaces registered entities, aliases, emails, and phones."""
         if not text:
             return text
-        out = text
-        out = _EMAIL_RE.sub(lambda m: self._mint_token(m.group(0), "EMAIL_BLIND"), out)
+        out = _EMAIL_RE.sub(lambda m: self._mint_token(m.group(0), "EMAIL_BLIND"), text)
         out = _PHONE_RE.sub(lambda m: self._mint_token(m.group(0), "PHONE_BLIND"), out)
-        # Replace longest raw strings first to avoid partial substring collisions
-        for raw in sorted(self._raw_to_token.keys(), key=len, reverse=True):
-            out = out.replace(raw, self._raw_to_token[raw])
+        if self._compiled_matcher is not None:
+            out = self._compiled_matcher.sub(
+                lambda m: self._alias_lower_to_token[m.group(0).lower()],
+                out,
+            )
         return out
 
     def blind_payload(self, data: Any) -> Any:
         """Recursively blinds sensitive identity fields in MCP JSON responses before LLM ingestion."""
         if isinstance(data, dict):
             blinded_dict: Dict[str, Any] = {}
-            # First pass: register structured identity fields
             for k, v in data.items():
                 prefix = _SENSITIVE_FIELD_PREFIXES.get(k.lower())
                 if prefix and isinstance(v, str) and v.strip():
@@ -116,7 +139,6 @@ class BlindLLMVault:
                     blinded_dict[k] = self._mint_token(v, prefix)
                 else:
                     blinded_dict[k] = v
-            # Second pass: recurse and scrub free-text notes/subjects against registered entities
             for k, v in list(blinded_dict.items()):
                 if k.lower() not in _SENSITIVE_FIELD_PREFIXES:
                     blinded_dict[k] = self.blind_payload(v)
@@ -128,7 +150,7 @@ class BlindLLMVault:
         return data
 
     def unblind_text(self, text: str) -> str:
-        """Restores real entity names locally for authorized human operators or backend writebacks."""
+        """Restores canonical entity names locally for authorized operators or backend writebacks."""
         if not text:
             return text
         out = text
@@ -140,10 +162,7 @@ class BlindLLMVault:
     def unblind_payload(self, data: Any) -> Any:
         """Recursively restores blind tokens in LLM tool-call arguments before hitting backend APIs."""
         if isinstance(data, dict):
-            out: Dict[str, Any] = {}
-            for k, v in data.items():
-                out[k] = self.unblind_payload(v)
-            return out
+            return {k: self.unblind_payload(v) for k, v in data.items()}
         if isinstance(data, list):
             return [self.unblind_payload(item) for item in data]
         if isinstance(data, str):
@@ -154,14 +173,22 @@ class BlindLLMVault:
         return data
 
     def contains_any_raw_pii(self, text: str) -> bool:
-        """Audit helper verifying zero registered raw PII strings appear in a blinded LLM transcript."""
+        """Audit helper verifying zero registered entities/aliases appear (case-insensitively) in text."""
         if not text:
             return False
-        return any(raw in text for raw in self._raw_to_token.keys())
+        if _EMAIL_RE.search(text) or _PHONE_RE.search(text):
+            return True
+        if self._compiled_matcher is not None and self._compiled_matcher.search(text):
+            return True
+        return False
 
     def summary(self) -> Dict[str, Any]:
         mappings: List[Dict[str, str]] = [
-            {"blind_token": tok, "category": self._category_by_token.get(tok, "ENTITY"), "redacted_preview": f"{raw[:3]}***"}
+            {
+                "blind_token": tok,
+                "category": self._category_by_token.get(tok, "ENTITY"),
+                "redacted_preview": f"{raw[:3]}***",
+            }
             for tok, raw in list(self._token_to_raw.items())[:20]
         ]
         return {

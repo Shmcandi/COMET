@@ -4,7 +4,7 @@
 **Track Selected:** **Problem Statement 3 — *A copilot that works across two systems*** (`Synapse Auto Mode` + Live `synapse build --discover`)
 
 > [!IMPORTANT]
-> Both MCP servers (`synapse_auto_server.py`) are generated externally by `@2ndbrainlabs-ai/synapse-cli` (`v0.1.9`) from two standalone Python FastAPI sample services (`SupplyPulse ERP` and `CareDesk CRM`) that contain zero MCP SDK imports or hand-written tool schemas. Backend-to-MCP HTTP traffic runs over CA-pinned `TLSv1.3` (`TLS_AES_256_GCM_SHA384`) with asymmetric `ES256` public-key JWT verification and per-service `HMAC-SHA256` anti-replay signatures.
+> Both MCP servers (`synapse_auto_server.py`) are generated externally by `@2ndbrainlabs-ai/synapse-cli` (`v0.1.9`) from two standalone Python FastAPI sample services (`SupplyPulse ERP` and `CareDesk CRM`) that contain zero MCP SDK imports or hand-written tool schemas. Backend-to-MCP HTTP traffic runs over CA-pinned `TLSv1.3` (`TLS_AES_256_GCM_SHA384`) with asymmetric `ES256` public-key JWT verification and full-body/query `HMAC-SHA256` anti-replay signatures.
 
 ---
 
@@ -32,12 +32,12 @@ Enterprise operations teams lose critical SLA minutes correlating disconnected s
 
 ```mermaid
 flowchart LR
-    Browser["Operator Browser"] -->|"HTTP default / HTTPS (--https) + HttpOnly ES256 Cookie"| Studio["COMET Studio (:8100)"]
+    Browser["Operator Browser"] -->|"HTTP default / HTTPS (--https) + HttpOnly ES256 Cookie + X-COMET-CSRF"| Studio["COMET Studio (:8100)"]
     Studio --> Copilot["COMET Copilot (./copilot/agent.py)"]
     Copilot -->|"Local OS stdio pipe"| Runner1["authenticated_mcp_runner.py -> SupplyPulse MCP"]
     Copilot -->|"Local OS stdio pipe"| Runner2["authenticated_mcp_runner.py -> CareDesk MCP"]
-    Runner1 -->|"HTTPS TLS 1.3 + ES256 JWT (aud=orders) + HMAC"| S1["SupplyPulse ERP (https://127.0.0.1:8101)"]
-    Runner2 -->|"HTTPS TLS 1.3 + ES256 JWT (aud=support) + HMAC"| S2["CareDesk CRM (https://127.0.0.1:8102)"]
+    Runner1 -->|"HTTPS TLS 1.3 + ES256 JWT (aud=orders) + Full-Body HMAC"| S1["SupplyPulse ERP (https://127.0.0.1:8101)"]
+    Runner2 -->|"HTTPS TLS 1.3 + ES256 JWT (aud=support) + Full-Body HMAC"| S2["CareDesk CRM (https://127.0.0.1:8102)"]
 ```
 
 ### Selective Endpoint Exposure (Synapse Best Practice)
@@ -52,9 +52,9 @@ Per Page 7 of the Participant Guide (*"Expose only what the agent needs. Fewer, 
 
 | Hop | Default Transport | Optional / Hardened Mode | Authentication & Integrity Control |
 | :--- | :--- | :--- | :--- |
-| **1. Browser ↔ Studio (`:8100`)** ([`./dashboard/server.py`](./dashboard/server.py)) | `http://127.0.0.1:8100` *(avoids self-signed browser cert warnings during live judging)* | `https://127.0.0.1:8100` via `python start_studio.py --https` *(enables `TLSv1.3` + `Secure` cookie attribute)* | `HttpOnly; SameSite=Strict` `ES256` Studio Session JWT + loopback `Origin` & `Host` CSRF/DNS-rebinding guards |
+| **1. Browser ↔ Studio (`:8100`)** ([`./dashboard/server.py`](./dashboard/server.py)) | `http://127.0.0.1:8100` *(avoids self-signed browser cert warnings during live judging)* | `https://127.0.0.1:8100` via `python start_studio.py --https` *(enables `TLSv1.3` + `Secure` cookie attribute)* | `HttpOnly; SameSite=Strict` `ES256` Studio Session JWT + mandatory `X-COMET-CSRF: 1` header + `Sec-Fetch-Site` / `Origin` / `Host` guards + strict `script-src 'self'` CSP ([`./dashboard/static/app.js`](./dashboard/static/app.js)) |
 | **2. Copilot ↔ MCP Servers** ([`./copilot/mcp_bridge.py`](./copilot/mcp_bridge.py)) | Unencrypted OS anonymous kernel `stdio` pipes *(local parent-to-child IPC; never traverses a network socket)* | Process-isolated environment allowlist (`_SAFE_SUBPROCESS_ENV_KEYS`) | Only the parent Copilot process holds the pipe file descriptors; no listening TCP port exposed |
-| **3. MCP Runners ↔ Backends (`:8101`, `:8102`)** ([`./security/authenticated_mcp_runner.py`](./security/authenticated_mcp_runner.py)) | **Always-on `HTTPS` (`TLSv1.3` · `TLS_AES_256_GCM_SHA384`)** | Strict RFC 5280 `VERIFY_X509_STRICT` CA pinning (`REQUESTS_CA_BUNDLE=./certs/comet_ca.pem`) | Asymmetric `ES256` Bearer JWT (`aud`-scoped, verified via public key only) + per-service `HMAC-SHA256` timestamp/nonce signature |
+| **3. MCP Runners ↔ Backends (`:8101`, `:8102`)** ([`./security/authenticated_mcp_runner.py`](./security/authenticated_mcp_runner.py)) | **Always-on `HTTPS` (`TLSv1.3` · `TLS_AES_256_GCM_SHA384`)** | Strict RFC 5280 `VERIFY_X509_STRICT` CA pinning (`REQUESTS_CA_BUNDLE=./certs/comet_ca.pem`) + owner-only private-key ACLs | Asymmetric `ES256` Bearer JWT (`aud`-scoped, verified via public key only) + full-body/query `HMAC-SHA256` (`METHOD:PATH:QUERY:TS:NONCE:SHA256(BODY)`) |
 
 ---
 
@@ -73,9 +73,9 @@ Per Page 7 of the Participant Guide (*"Expose only what the agent needs. Fewer, 
    - When no external LLM API key is configured (or if an upstream provider errors mid-demo), falls back to a deterministic, rule-based cross-system workflow orchestrator (not an LLM loop) so live demos remain 100% functional offline while still executing genuine JSON-RPC `CallToolRequest` calls through both Synapse MCP servers.
 
 ### Blind LLM Agent (BLA) Identity-Blinding Architecture (`./security/blind_llm_guard.py`)
-To prevent structured enterprise PII and known customer/staff identities from being sent to external LLM providers during cross-system reasoning, COMET implements **BLA (Blind LLM Agents)** via `BlindLLMVault`:
-- **Structured-Field & Known-Entity Blinding (`blind_payload` / `blind_text`)**: Pre-seeds known directory organizations/aliases and staff names at session start so even **Turn-1 user prompts** (e.g., *"Check Apex BioLabs' P1 ticket"*) are pseudonymized before reaching the LLM. On tool responses, intercepts structured fields (`customer_name`, `assigned_to`, emails, phone numbers) and runs a second pass over unstructured `subject`/`notes` prose against all session-registered entities and email/phone regexes, replacing matches with 6-hex session-keyed `HMAC-SHA256` tokens (`[ORG_BLIND_XXXXXX]`, `[STAFF_BLIND_XXXXXX]`). *(Scope note: unseen arbitrary third-party names appearing only in free-form prose outside the entity registry and regex patterns are not targeted without an external NER model.)*
-- **Cross-System Join Preservation**: Because hashing is deterministic per session, `"Apex BioLabs Pvt Ltd"` from `SupplyPulse` and `"Apex BioLabs Pvt Ltd"` from `CareDesk` resolve to the **exact same token**, preserving cross-system relational joins while keeping the LLM blind to registered customer and employee identities.
+To prevent structured enterprise PII and known customer/staff identities from being sent to external LLM providers during cross-system reasoning, COMET enforces **BLA (Blind LLM Agents)** server-side (`COMET_BLA_ENFORCED=1`; client downgrade overrides in `/api/ask` are rejected with `422 Unprocessable Entity`):
+- **Case-Insensitive & Alias-Unified Blinding (`blind_payload` / `blind_text`)**: Pre-seeds known directory organizations/aliases and staff names at session start with `re.IGNORECASE` word-boundary matching and canonical alias resolution (`_CANONICAL_ORG_ALIASES`), so even lowercase **Turn-1 user prompts** (e.g., *"check apex biolabs p1 ticket"*) map to the exact same 6-hex `HMAC-SHA256` token (`[ORG_BLIND_XXXXXX]`) as `"Apex BioLabs Pvt Ltd"` in ERP/CRM payloads. Also scrubs structured fields (`customer_name`, `assigned_to`, emails, phone numbers) and runs a second pass over unstructured `subject`/`notes` prose. *(Scope note: unseen arbitrary third-party names appearing only in free-form prose outside the entity registry and regex patterns are not targeted without an external NER model.)*
+- **Cross-System Join Preservation**: Because hashing is deterministic per canonical entity per session, `"Apex BioLabs"` in a user prompt, `"Apex BioLabs Pvt Ltd"` from `SupplyPulse`, and `"Apex BioLabs Pvt Ltd"` from `CareDesk` all resolve to the **exact same token**, preserving cross-system relational joins while keeping the LLM blind to registered identities.
 - **Writeback Argument Unblinding (`unblind_payload`)**: When the Blind LLM invokes a mutating MCP tool (e.g., `create_proactive_ticket(customer_name="[ORG_BLIND_A1F9C2]", ...)`), the local MCP boundary automatically restores `"Vanguard Robotics"` before calling `CareDesk`.
 - **Auditable Studio Inspector**: Operators and judges can click **🕶️ View: Blind LLM Context (Identity-Blinded)** in the Studio header to toggle live between the `[ORG_BLIND_XXXXXX]` LLM view and the unblinded operator view.
 
@@ -87,12 +87,14 @@ To prevent structured enterprise PII and known customer/staff identities from be
 
 ---
 
-## 4. Service Compartmentalization (`ES256`) & Explicit MCP Wrapper
+## 4. Service Compartmentalization (`ES256`), Full-Body HMAC & Anti-DoS Hardening
 
 Because all demo components run under one OS user on a single hackathon laptop, this design is **compartmentalized (Zero-Trust-modeled)** at the process and credential level rather than claiming multi-host physical isolation (in production, `Studio/Control Plane`, `SupplyPulse`, and `CareDesk` would run in separate containers/IAM principals with KMS/SPIFFE keys):
 
-- **Asymmetric `ES256` Public-Key Verification ([`./security/auth_guard.py`](./security/auth_guard.py), [`./copilot/service_manager.py`](./copilot/service_manager.py))**: Only the control-plane process holds `ISSUER_PRIVATE_KEY_PEM`. `SupplyPulse` receives only `ISSUER_PUBLIC_KEY_PEM` + `SUPPLYPULSE_HMAC_SECRET`; `CareDesk` receives only `ISSUER_PUBLIC_KEY_PEM` + `CAREDESK_HMAC_SECRET`. Neither backend holds any JWT signing private key or peer HMAC secret, yet public-key verification still distinguishes genuine wrong-audience token replay (`403 CROSS_SERVICE_AUDIENCE_SPOOF`) from forged signatures (`401 TAMPERED_OR_FORGED_TOKEN`).
-- **Explicit Auditable MCP Wrapper ([`./security/authenticated_mcp_runner.py`](./security/authenticated_mcp_runner.py))**: Replaces implicit `sitecustomize.py` hooks with an explicit CLI wrapper declared directly in [`./mcp_client_config.json`](./mcp_client_config.json) (`python ./security/authenticated_mcp_runner.py ./services/.../synapse_auto_server.py`), attaching `ScopedES256AndHMACAuth` and `REQUESTS_CA_BUNDLE` TLS verification to a pooled `requests.Session` while keeping `synapse_auto_server.py` untouched.
+- **Asymmetric `ES256` Public-Key Verification & Fail-Closed Startup ([`./security/auth_guard.py`](./security/auth_guard.py), [`./copilot/service_manager.py`](./copilot/service_manager.py))**: Only the control-plane process holds `ISSUER_PRIVATE_KEY_PEM`. `SupplyPulse` receives only `ISSUER_PUBLIC_KEY_PEM` + `SUPPLYPULSE_HMAC_SECRET`; `CareDesk` receives only `ISSUER_PUBLIC_KEY_PEM` + `CAREDESK_HMAC_SECRET` (with zero hardcoded fallback secrets — standalone startup without valid keys fails closed with `503`/`403`). Public-key verification distinguishes genuine wrong-audience token replay (`403 CROSS_SERVICE_AUDIENCE_SPOOF`) from forged signatures (`401 TAMPERED_OR_FORGED_TOKEN`).
+- **Full-Body & Query-String HMAC Binding**: Every backend request signs `METHOD:PATH:QUERY:TIMESTAMP:NONCE:SHA256(BODY_BYTES)`, blocking in-transit JSON body tampering (`POST /tickets`, `PATCH /tickets/{id}`, `POST /expedite-reroute`) as well as query-parameter injection (`401 TAMPERED_HMAC_SIGNATURE`).
+- **Unspoofable Anti-DoS Rate-Limiting & Bounded Telemetry**: Failed-auth rate-limiting keys strictly by network peer IP (ignoring unauthenticated `X-Actor-Id` headers) inside bounded `OrderedDict`/`deque` structures, while cryptographically valid `ES256`+`HMAC` MCP requests bypass IP lockout so an unauthenticated local attacker cannot DoS legitimate Copilot tool traffic.
+- **Explicit Auditable MCP Wrapper ([`./security/authenticated_mcp_runner.py`](./security/authenticated_mcp_runner.py))**: Declared directly in [`./mcp_client_config.json`](./mcp_client_config.json), attaching `ScopedES256AndHMACAuth` and `REQUESTS_CA_BUNDLE` TLS verification to a pooled `requests.Session` while keeping `synapse_auto_server.py` untouched.
 
 ---
 
@@ -109,25 +111,26 @@ Because all demo components run under one OS user on a single hackathon laptop, 
 | Execution Mode | Measured Scope | Latency (8 Cross-System MCP Calls) |
 | :--- | :--- | :--- |
 | **Cold-Start Subprocess Baseline** *(pre-optimization)* | Spawning 2 fresh Python MCP subprocesses per request + sequential HTTP calls (`0` LLM calls) | `~3,200 – 3,800 ms` |
-| **Warm MCP Transport Layer** *(Rule-Based Offline Orchestrator)* | Persistent `stdio` JSON-RPC + pooled `TLSv1.3` + `ES256` JWT + `HMAC-SHA256` across both servers (**`0.0 ms` LLM time**) | **`42.6 – 92.4 ms`** |
+| **Warm MCP Transport Layer** *(Rule-Based Offline Orchestrator)* | Persistent `stdio` JSON-RPC + pooled `TLSv1.3` + `ES256` JWT + full-body `HMAC-SHA256` across both servers (**`0.0 ms` LLM time**) | **`42.6 – 92.4 ms`** |
 | **Live Cloud LLM Mode** *(Groq / OpenAI / Gemini / OpenRouter)* | `2–3` remote LLM tool-planning & synthesis round-trips **plus** the `~45–95 ms` MCP transport overhead above | Typically **`1,200 – 3,800 ms`** *(provider/model dependent)* |
 
 ---
 
-## 6. Automated Verification Evidence (`33/33` Assertions Passed)
+## 6. Automated Verification Evidence (`42/42` Assertions Passed)
 
-[`./test_security_and_latency.py`](./test_security_and_latency.py) verifies 33 assertions across 7 suites (path-traversal & JSON-schema hallucination rejection, subprocess secret isolation, Studio `ES256` session/CSRF/DNS-rebinding guards, `TLSv1.3` CA pinning, all false-auth/nonce-replay/429-lockout vectors, `DEMO_HARNESS_ENABLED=0` lock, live `synapse build --discover` + ERP idempotency, and Blind LLM Agent Turn-1 prompt/payload blinding, cross-system joins, and writeback unblinding):
+[`./test_security_and_latency.py`](./test_security_and_latency.py) verifies 42 assertions across 8 suites (path-traversal & JSON-schema hallucination rejection, subprocess secret isolation, Studio `ES256` session/`X-COMET-CSRF`/`Sec-Fetch-Site`/DNS-rebinding guards, strict `script-src 'self'` CSP, `TLSv1.3` CA pinning, 5-vector false-auth/body-tamper/query-tamper/nonce-replay/429-lockout & anti-DoS bypass checks, fail-closed misconfiguration guard, `DEMO_HARNESS_ENABLED=0` lock, live `synapse build --discover` + ERP idempotency, and server-enforced case-insensitive/alias-unified Blind LLM Agent verification):
 
 ```text
 [PASS] Suite 1: Path-traversal, JSON-Schema hallucination guard & env isolation (9 assertions)
 [PASS] Suite 2: Studio ES256 session cookie, CSRF & DNS-rebinding guards (14 cumulative)
 [PASS] Suite 3: Backend HTTPS (TLSv1.3 · TLS_AES_256_GCM_SHA384) & CA pinning (17 cumulative)
-[PASS] Suite 4: ES256 public-key audience spoof, nonce replay & 429 lockout (21 cumulative)
+[PASS] Suite 4: ES256 public-key audience spoof, body tamper, nonce replay & 429 lockout (21 cumulative)
 [PASS] Suite 5: DEMO_HARNESS_ENABLED=0 blocks runtime route mutation (22 cumulative)
-[PASS] Suite 6: MCP transport=44.0ms (LLM=0.0ms), live --discover & ERP idempotency (26 cumulative)
+[PASS] Suite 6: MCP transport=74.7ms (LLM=0.0ms), live --discover & ERP idempotency (26 cumulative)
 [PASS] Suite 7: Blind LLM Agent (BLA) prompt/payload blinding, cross-system join & writeback unblinding (33 cumulative)
+[PASS] Suite 8: White-box red-team patches (body/query HMAC, anti-DoS, CSRF, BLA lock, alias vault, strict CSP) (42 cumulative)
 
-SUMMARY: 33/33 assertions passed across 7 verification suites (0 failures).
+SUMMARY: 42/42 assertions passed across 8 verification suites (0 failures).
 ```
 
 ---
@@ -146,7 +149,7 @@ SUMMARY: 33/33 assertions passed across 7 verification suites (0 failures).
 # 3. Run Automated CLI Judge Demo (Prompts 1-2 + Before/After Live `synapse build --discover`)
 .\.venv\Scripts\python.exe .\run_demo.py
 
-# 4. Run 33-Assertion Security, BLA, Loophole & Latency Verification Suite
+# 4. Run 42-Assertion Security, Red-Team Patch, BLA & Latency Verification Suite
 .\.venv\Scripts\python.exe .\test_security_and_latency.py
 ```
 
