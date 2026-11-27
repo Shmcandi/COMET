@@ -22,8 +22,9 @@ from security.auth_guard import (
 from security.pki import ensure_tls_certificates
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-VENV_PYTHON = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
-PYTHON_CMD = str(VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable))
+_WIN_PY = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+_POSIX_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
+PYTHON_CMD = str(_WIN_PY if _WIN_PY.exists() else (_POSIX_PY if _POSIX_PY.exists() else Path(sys.executable)))
 
 CA_CERT_PATH, SERVER_CERT_PATH, SERVER_KEY_PATH = ensure_tls_certificates()
 

@@ -18,8 +18,9 @@ from copilot.service_manager import CA_CERT_PATH, ISSUER_PRIVATE_KEY_PEM, SERVIC
 from security.auth_guard import issue_scoped_es256_jwt
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-VENV_PYTHON = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
-PYTHON_CMD = str(VENV_PYTHON if VENV_PYTHON.exists() else Path(sys.executable))
+_WIN_PY = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+_POSIX_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
+PYTHON_CMD = str(_WIN_PY if _WIN_PY.exists() else (_POSIX_PY if _POSIX_PY.exists() else Path(sys.executable)))
 AUTH_RUNNER_SCRIPT = PROJECT_ROOT / "security" / "authenticated_mcp_runner.py"
 
 ORDERS_SERVER_SCRIPT = PROJECT_ROOT / "services" / "orders_logistics_service" / "synapse_auto_server.py"

@@ -177,8 +177,16 @@ def run_all_checks() -> None:
             f"[PASS] Suite 6: MCP transport={ask1['mcp_transport_latency_ms']}ms (LLM=0.0ms), live --discover & ERP idempotency ({assertions_passed} cumulative)"
         )
 
-        # Suite 7: Blind LLM Agent (BLA) Cryptographic Tokenization & Zero-PII Verification (6 assertions)
+        # Suite 7: Blind LLM Agent (BLA) Identity Tokenization & Prompt/Writeback Verification (7 assertions)
         vault = BlindLLMVault()
+        turn1_prompt = vault.blind_text("Check Apex BioLabs' P1 ticket with Priya Nair")
+        check(
+            "Apex BioLabs" not in turn1_prompt
+            and "Priya Nair" not in turn1_prompt
+            and "[ORG_BLIND_" in turn1_prompt
+            and "[STAFF_BLIND_" in turn1_prompt,
+            f"Turn-1 user prompt failed pre-seeded entity blinding: {turn1_prompt}",
+        )
         erp_blinded = vault.blind_payload({"customer_name": "Apex BioLabs Pvt Ltd", "order_id": "ORD-7801"})
         crm_blinded = vault.blind_payload({"customer_name": "Apex BioLabs Pvt Ltd", "assigned_to": "Priya Nair"})
         check(
@@ -214,7 +222,7 @@ def run_all_checks() -> None:
             "Apex BioLabs Pvt Ltd" in ask1["answer"] and "[ORG_BLIND_" not in ask1["answer"],
             "Operator unblinded view failed to restore readable names",
         )
-        print(f"[PASS] Suite 7: Blind LLM Agent (BLA) zero-PII tokenization, cross-system join & writeback unblinding ({assertions_passed} cumulative)")
+        print(f"[PASS] Suite 7: Blind LLM Agent (BLA) prompt/payload blinding, cross-system join & writeback unblinding ({assertions_passed} cumulative)")
 
     print(f"\nSUMMARY: {assertions_passed}/{assertions_passed} assertions passed across 7 verification suites (0 failures).")
 

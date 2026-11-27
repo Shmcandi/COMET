@@ -37,16 +37,40 @@ _SENSITIVE_FIELD_PREFIXES = {
 }
 
 
+_DEFAULT_KNOWN_ORGS = (
+    "Apex BioLabs Pvt Ltd",
+    "Apex BioLabs",
+    "Vanguard Robotics",
+    "Nova Retail Systems",
+    "Nova Retail",
+    "MedCore Diagnostics",
+    "MedCore",
+    "Zenith AgroTech",
+    "Orbit FinServe",
+)
+
+_DEFAULT_KNOWN_STAFF = (
+    "Priya Nair",
+    "Ananya Rao",
+    "Rohan Verma",
+)
+
+
 class BlindLLMVault:
     """Session-scoped bidirectional pseudonymization vault for Blind LLM Agents (BLA)."""
 
-    def __init__(self, session_key: bytes | None = None) -> None:
+    def __init__(self, session_key: bytes | None = None, preseed_directory: bool = True) -> None:
         self._key = session_key or secrets.token_bytes(32)
         self._token_to_raw: Dict[str, str] = {}
         self._raw_to_token: Dict[str, str] = {}
         self._category_by_token: Dict[str, str] = {}
         self.tool_outputs_blinded = 0
         self.tool_args_unblinded = 0
+        if preseed_directory:
+            for org in _DEFAULT_KNOWN_ORGS:
+                self._mint_token(org, "ORG_BLIND")
+            for staff in _DEFAULT_KNOWN_STAFF:
+                self._mint_token(staff, "STAFF_BLIND")
 
     def _mint_token(self, raw_value: str, prefix: str) -> str:
         clean = raw_value.strip()
